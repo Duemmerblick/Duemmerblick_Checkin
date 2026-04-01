@@ -7,18 +7,14 @@
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; color: #333; }
-        
-        /* Sperrbildschirm Styling */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 2000; color: white; flex-direction: column; }
         #login-overlay input { padding: 15px; border-radius: 8px; border: none; margin-bottom: 10px; width: 250px; text-align: center; font-size: 18px; }
-        
         .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .nav { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         button { flex: 1; min-width: 120px; padding: 15px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; }
         .btn-blue { background: var(--secondary); color: white; }
         .btn-green { background: var(--success); color: white; }
         .btn-gray { background: #95a5a6; color: white; }
-        
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
         .hidden { display: none !important; }
         input, select { width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
@@ -40,7 +36,7 @@
     <p id="pass-error" style="color: #e74c3c; margin-top: 10px;" class="hidden">Falsches Passwort!</p>
 </div>
 
-<div id="loading-overlay">Synchronisiere Cloud...</div>
+<div id="loading-overlay">Daten werden synchronisiert...</div>
 
 <div class="container hidden" id="app-content">
     <div class="nav">
@@ -48,26 +44,17 @@
         <button class="btn-green" onclick="showView('kalender')">📋 Gästeliste</button>
         <button class="btn-gray" onclick="prepareNew()">➕ NEU</button>
     </div>
-
-    <div id="view-visual">
-        <h3>Cloud-Status: Verbunden ✅</h3>
-        <p>Willkommen im Dümmerblick Manager.</p>
-    </div>
-
+    <div id="view-visual"><h3>Cloud-Status: Bereit ✅</h3></div>
     <div id="view-kalender" class="hidden">
-        <h2>Aktuelle Buchungen</h2>
-        <table>
-            <thead><tr><th>Gast</th><th>Haus</th><th>Anreise</th><th>Status</th></tr></thead>
-            <tbody id="belegungsDaten"></tbody>
-        </table>
+        <h2>Buchungen</h2>
+        <table><thead><tr><th>Gast</th><th>Haus</th><th>Anreise</th><th>Status</th></tr></thead><tbody id="belegungsDaten"></tbody></table>
     </div>
-
     <div id="view-form" class="hidden">
-        <h2>Check-In / Bearbeiten</h2>
+        <h2>Check-In</h2>
         <form id="checkinForm">
             <input type="hidden" id="f-id">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                <div><label>Wohnung</label><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
+                <div><label>Haus</label><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
                 <div><label>Gast Name</label><input type="text" id="gastName" required></div>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
@@ -75,59 +62,46 @@
                 <div><label>Abreise</label><input type="date" id="abreise" required></div>
             </div>
             <label>Anschrift</label><input type="text" id="anschrift">
-            <label>Unterschrift</label>
-            <canvas id="signature-pad"></canvas>
+            <label>Unterschrift</label><canvas id="signature-pad"></canvas>
             <button type="submit" class="btn-green" style="width:100%; height:60px; margin-top:25px;">💾 SPEICHERN</button>
         </form>
     </div>
 </div>
 
 <script>
-<script>
-    // DEIN PASSWORT
     const MY_PASSWORD = "Duemmer123";
-    
-    // DEINE URL AUS GOOGLE (Bleibt gleich)
     const API_URL = "https://script.google.com/macros/s/AKfycbwmTGnzW0mS0HKMOZTQyTy68-VOlhNdJGjwU05pCg8tJ3ZVDA0cVZml1e-rDCrCF5R9/exec";
+    
+    let db = [];
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
 
     function checkPassword() {
         const input = document.getElementById('pass-input').value;
         if(input === MY_PASSWORD) {
             document.getElementById('login-overlay').classList.add('hidden');
             document.getElementById('app-content').classList.remove('hidden');
-            loadFromCloud(); 
+            loadFromCloud();
         } else {
             document.getElementById('pass-error').classList.remove('hidden');
         }
     }
 
-    let db = [];
-    const canvas = document.getElementById('signature-pad');
-    const ctx = canvas.getContext('2d');
-    let drawing = false;
-
     async function loadFromCloud() {
         document.getElementById('loading-overlay').style.display = 'flex';
         try {
-            // Wir fügen einen Zeitstempel an die URL an, um den Cache zu umgehen
-            const response = await fetch(API_URL + "?nocache=" + Date.now());
-            db = await response.json();
+            const resp = await fetch(API_URL + "?nocache=" + Date.now());
+            db = await resp.json();
             renderTable();
-            console.log("Daten geladen:", db);
-        } catch (e) { 
-            console.log("Fehler beim Laden", e); 
-        }
+        } catch (e) { console.error(e); }
         document.getElementById('loading-overlay').style.display = 'none';
-        showView('kalender'); // Nach dem Laden direkt zur Liste springen
+        showView('kalender');
     }
 
     function renderTable() {
         const tbody = document.getElementById('belegungsDaten');
         tbody.innerHTML = '';
-        if (db.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">Keine Buchungen in der Cloud gefunden.</td></tr>';
-            return;
-        }
         db.forEach(b => {
             const isDone = b.anschrift && b.signature && b.signature.length > 500;
             tbody.innerHTML += `<tr onclick="editEntry('${b.id}')" style="cursor:pointer;">
@@ -140,28 +114,18 @@
     }
 
     async function saveToCloud(entry) {
-    document.getElementById('loading-overlay').style.display = 'flex';
-    try {
-        // Wir senden es als Text-Blob, das akzeptiert Google ohne CORS-Fehler
-        await fetch(API_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(entry)
-        });
-        
-        // Kurze Pause, damit Google Zeit zum Wegschreiben hat
-        setTimeout(() => {
-            loadFromCloud();
-            showView('kalender');
-        }, 2500);
-        
-    } catch (e) {
-        console.error("Fehler:", e);
-        alert("Sende-Fehler! Bitte Verbindung prüfen.");
-        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('loading-overlay').style.display = 'flex';
+        try {
+            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
+            setTimeout(loadFromCloud, 2500);
+        } catch (e) { alert("Fehler!"); document.getElementById('loading-overlay').style.display = 'none'; }
     }
-}
+
+    function showView(v) {
+        ['view-visual', 'view-kalender', 'view-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById('view-' + v).classList.remove('hidden');
+        if(v === 'form') setTimeout(resizeCanvas, 150);
+    }
 
     function editEntry(id) {
         const b = db.find(x => x.id == id);
@@ -174,30 +138,11 @@
         document.getElementById('anschrift').value = b.anschrift || "";
         showView('form');
         clearSig();
-        if(b.signature && b.signature.length > 500) {
-            let img = new Image();
-            img.onload = () => ctx.drawImage(img, 0, 0);
-            img.src = b.signature;
-        }
+        if(b.signature && b.signature.length > 500) { let img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = b.signature; }
     }
 
-    function showView(v) {
-        ['view-visual', 'view-kalender', 'view-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
-        document.getElementById('view-' + v).classList.remove('hidden');
-        if(v === 'form') setTimeout(resizeCanvas, 150);
-    }
-
-    function resizeCanvas() { 
-        const r = canvas.getBoundingClientRect();
-        canvas.width = r.width; 
-        canvas.height = r.height; 
-        ctx.lineWidth = 3; 
-        ctx.lineCap = "round"; 
-        ctx.strokeStyle = "#000";
-    }
-
+    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#000"; }
     function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-    
     canvas.onmousedown = canvas.ontouchstart = (e) => { drawing = true; ctx.beginPath(); };
     window.onmouseup = window.ontouchend = () => drawing = false;
     canvas.onmousemove = canvas.ontouchmove = (e) => { 
@@ -209,24 +154,10 @@
         if(e.touches) e.preventDefault();
     };
 
-    function prepareNew() {
-        document.getElementById('checkinForm').reset();
-        document.getElementById('f-id').value = Date.now();
-        showView('form');
-        clearSig();
-    }
-
+    function prepareNew() { document.getElementById('checkinForm').reset(); document.getElementById('f-id').value = Date.now(); showView('form'); clearSig(); }
     document.getElementById('checkinForm').onsubmit = (e) => {
         e.preventDefault();
-        const entry = {
-            id: document.getElementById('f-id').value,
-            wohnung: document.getElementById('wohnung').value,
-            name: document.getElementById('gastName').value || "Booking.com",
-            anreise: document.getElementById('anreise').value,
-            abreise: document.getElementById('abreise').value,
-            anschrift: document.getElementById('anschrift').value,
-            signature: canvas.toDataURL()
-        };
+        const entry = { id: document.getElementById('f-id').value, wohnung: document.getElementById('wohnung').value, name: document.getElementById('gastName').value || "Booking.com", anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, signature: canvas.toDataURL() };
         saveToCloud(entry);
     };
 </script>
