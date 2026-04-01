@@ -83,10 +83,11 @@
 </div>
 
 <script>
-    // DEIN PASSWORT - HIER ÄNDERN!
+<script>
+    // DEIN PASSWORT
     const MY_PASSWORD = "Duemmer123";
     
-    // DEINE URL AUS GOOGLE
+    // DEINE URL AUS GOOGLE (Bleibt gleich)
     const API_URL = "https://script.google.com/macros/s/AKfycbwmTGnzW0mS0HKMOZTQyTy68-VOlhNdJGjwU05pCg8tJ3ZVDA0cVZml1e-rDCrCF5R9/exec";
 
     function checkPassword() {
@@ -94,13 +95,12 @@
         if(input === MY_PASSWORD) {
             document.getElementById('login-overlay').classList.add('hidden');
             document.getElementById('app-content').classList.remove('hidden');
-            loadFromCloud(); // Erst nach Login Daten laden
+            loadFromCloud(); 
         } else {
             document.getElementById('pass-error').classList.remove('hidden');
         }
     }
 
-    // --- Der Rest der Cloud-Logik bleibt identisch wie in V6 ---
     let db = [];
     const canvas = document.getElementById('signature-pad');
     const ctx = canvas.getContext('2d');
@@ -109,16 +109,25 @@
     async function loadFromCloud() {
         document.getElementById('loading-overlay').style.display = 'flex';
         try {
-            const response = await fetch(API_URL);
+            // Wir fügen einen Zeitstempel an die URL an, um den Cache zu umgehen
+            const response = await fetch(API_URL + "?nocache=" + Date.now());
             db = await response.json();
             renderTable();
-        } catch (e) { console.log("Fehler", e); }
+            console.log("Daten geladen:", db);
+        } catch (e) { 
+            console.log("Fehler beim Laden", e); 
+        }
         document.getElementById('loading-overlay').style.display = 'none';
+        showView('kalender'); // Nach dem Laden direkt zur Liste springen
     }
 
     function renderTable() {
         const tbody = document.getElementById('belegungsDaten');
         tbody.innerHTML = '';
+        if (db.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">Keine Buchungen in der Cloud gefunden.</td></tr>';
+            return;
+        }
         db.forEach(b => {
             const isDone = b.anschrift && b.signature && b.signature.length > 500;
             tbody.innerHTML += `<tr onclick="editEntry('${b.id}')" style="cursor:pointer;">
@@ -132,13 +141,28 @@
 
     async function saveToCloud(entry) {
         document.getElementById('loading-overlay').style.display = 'flex';
-        await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
-        setTimeout(loadFromCloud, 1500);
-        showView('kalender');
+        try {
+            await fetch(API_URL, { 
+                method: 'POST', 
+                mode: 'no-cors', // Erlaubt das Senden an Google ohne Fehlermeldung
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry) 
+            });
+            
+            // Wichtig: Wir warten 2 Sekunden, damit Google Zeit zum Schreiben hat
+            setTimeout(() => {
+                loadFromCloud();
+            }, 2000);
+            
+        } catch (e) {
+            alert("Fehler beim Speichern!");
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
     }
 
     function editEntry(id) {
         const b = db.find(x => x.id == id);
+        if(!b) return;
         document.getElementById('f-id').value = b.id;
         document.getElementById('wohnung').value = b.wohnung;
         document.getElementById('gastName').value = b.name || "Booking.com";
@@ -147,23 +171,37 @@
         document.getElementById('anschrift').value = b.anschrift || "";
         showView('form');
         clearSig();
+        if(b.signature && b.signature.length > 500) {
+            let img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0);
+            img.src = b.signature;
+        }
     }
 
     function showView(v) {
         ['view-visual', 'view-kalender', 'view-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
         document.getElementById('view-' + v).classList.remove('hidden');
-        if(v === 'form') setTimeout(resizeCanvas, 100);
+        if(v === 'form') setTimeout(resizeCanvas, 150);
     }
 
-    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; }
+    function resizeCanvas() { 
+        const r = canvas.getBoundingClientRect();
+        canvas.width = r.width; 
+        canvas.height = r.height; 
+        ctx.lineWidth = 3; 
+        ctx.lineCap = "round"; 
+        ctx.strokeStyle = "#000";
+    }
+
     function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+    
     canvas.onmousedown = canvas.ontouchstart = (e) => { drawing = true; ctx.beginPath(); };
     window.onmouseup = window.ontouchend = () => drawing = false;
     canvas.onmousemove = canvas.ontouchmove = (e) => { 
         if(!drawing) return;
         const r = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - r.left;
-        const y = (e.clientY || e.touches[0].clientY) - r.top;
+        const x = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) - r.left;
+        const y = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) - r.top;
         ctx.lineTo(x, y); ctx.stroke();
         if(e.touches) e.preventDefault();
     };
