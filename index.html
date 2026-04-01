@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v6 Full Cloud</title>
+    <title>Dümmerblick Manager v6.1 Cloud</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; color: #333; }
@@ -17,15 +17,13 @@
         .btn-orange { background: #e67e22; color: white; }
         .btn-gray { background: #95a5a6; color: white; }
         
-        /* Timeline Styling */
-        .timeline-container { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; margin-top: 10px; }
+        .timeline-container { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; margin-top: 10px; min-height: 200px; }
         .timeline-grid { display: grid; grid-template-columns: 160px repeat(31, 45px); min-width: 1550px; position: relative; border-bottom: 1px solid #eee; }
         .apt-label { padding: 20px 10px; font-weight: bold; background: #eee; border-right: 2px solid #ddd; display: flex; align-items: center; }
-        .day-cell { text-align: center; padding: 10px 0; font-size: 11px; border-right: 1px solid #eee; }
-        .booking-bar { height: 34px; margin: 12px 0; border-radius: 6px; background: var(--secondary); color: white; font-size: 11px; padding: 0 8px; position: absolute; z-index: 10; cursor: pointer; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .day-cell { text-align: center; padding: 10px 0; font-size: 11px; border-right: 1px solid #eee; background: #fff; }
+        .booking-bar { height: 34px; margin: 12px 0; border-radius: 6px; background: var(--secondary); color: white; font-size: 11px; padding: 0 8px; position: absolute; z-index: 10; cursor: pointer; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; overflow: hidden; }
         .booking-bar.done { background: var(--success); }
 
-        /* Jahres-Planer Styling */
         .year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; margin-top: 15px; }
         .month-box { border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #fff; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 11px; }
@@ -39,6 +37,9 @@
         #signature-pad { border: 2px dashed #ccc; background: #fafafa; width: 100%; height: 220px; touch-action: none; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; }
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
+        .status-done { background: #d4edda; color: #155724; }
+        .status-open { background: #fff3cd; color: #856404; }
     </style>
 </head>
 <body>
@@ -46,10 +47,10 @@
 <div id="login-overlay">
     <h2>Dümmerblick Verwaltung</h2>
     <input type="password" id="pass-input" placeholder="Passwort">
-    <button class="btn-green" style="width: 250px;" onclick="checkPassword()">Anmelden</button>
+    <button class="btn-green" style="width: 250px; margin-top:10px;" onclick="checkPassword()">Anmelden</button>
 </div>
 
-<div id="loading-overlay">Cloud-Abgleich...</div>
+<div id="loading-overlay">Daten werden geladen...</div>
 
 <div class="container hidden" id="app-content">
     <div class="nav">
@@ -83,7 +84,7 @@
         <form id="checkinForm">
             <input type="hidden" id="f-id">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                <div><label>Haus</label><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
+                <div><label>Wohnung</label><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
                 <div><label>Gast Name</label><input type="text" id="gastName" required></div>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
@@ -106,7 +107,6 @@
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
-    // Jahre für Dropdown
     const curY = new Date().getFullYear();
     const ys = document.getElementById('year-select');
     for(let y=curY-1; y<=curY+2; y++) {
@@ -120,7 +120,7 @@
             document.getElementById('login-overlay').classList.add('hidden');
             document.getElementById('app-content').classList.remove('hidden');
             loadFromCloud();
-        }
+        } else { alert("Falsches Passwort"); }
     }
 
     async function loadFromCloud() {
@@ -131,28 +131,39 @@
             renderTimeline();
             renderTable();
             renderYear();
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Cloud-Fehler:", e); }
         document.getElementById('loading-overlay').style.display = 'none';
     }
 
     function renderTimeline() {
-        const cont = document.getElementById('timeline'); cont.innerHTML = '';
+        const cont = document.getElementById('timeline'); 
+        if(!cont) return;
+        cont.innerHTML = '';
         const today = new Date(); today.setHours(0,0,0,0);
+        
         let h = '<div class="timeline-grid"><div class="apt-label">Tag</div>';
         for(let i=0; i<=30; i++) {
             let d = new Date(today); d.setDate(today.getDate()+i);
             h += `<div class="day-cell"><b>${d.getDate()}</b><br>${d.getMonth()+1}.</div>`;
         }
         h += '</div>';
+
         ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
-            h += `<div class="timeline-grid" style="height:60px;"><div class="apt-label">${apt}</div>`;
+            h += `<div class="timeline-grid" style="height:60px; position:relative;"><div class="apt-label">${apt}</div>`;
+            for(let i=0; i<=30; i++) { h += `<div class="day-cell"></div>`; }
+            
             db.filter(b => b.wohnung === apt).forEach(b => {
                 let s = new Date(b.anreise); let e = new Date(b.abreise);
-                let dS = Math.floor((s - today) / 86400000); let dur = Math.ceil((e - s) / 86400000);
+                let dS = Math.floor((s - today) / 86400000); 
+                let dur = Math.ceil((e - s) / 86400000);
+                
                 if(dS + dur >= 0 && dS <= 30) {
-                    let st = Math.max(0, dS); let en = Math.min(31, dS + dur);
+                    let st = Math.max(0, dS); 
+                    let en = Math.min(31, dS + dur);
                     let w = (en - st) * 45;
-                    if(w > 5) h += `<div class="booking-bar ${isDone(b)?'done':''}" style="left:${160+(st*45)}px; width:${w-4}px;" onclick="editEntry('${b.id}')">${b.name || 'Booking.com'}</div>`;
+                    if(w > 5) {
+                        h += `<div class="booking-bar ${isDone(b)?'done':''}" style="left:${160+(st*45)}px; width:${w-5}px; top:12px;" onclick="editEntry('${b.id}')">${b.name || 'Booking.com'}</div>`;
+                    }
                 }
             });
             h += '</div>';
@@ -163,9 +174,11 @@
     function renderYear() {
         const year = parseInt(document.getElementById('year-select').value);
         const apt = document.getElementById('apt-filter').value;
-        const cont = document.getElementById('year-container'); cont.innerHTML = '';
+        const cont = document.getElementById('year-container'); 
+        if(!cont) return;
+        cont.innerHTML = '';
         for (let m=0; m<12; m++) {
-            let html = `<div class="month-box"><div style="text-align:center;font-weight:bold;margin-bottom:5px;background:#2c3e50;color:white;border-radius:4px;">${new Date(year, m).toLocaleString('de-DE', {month:'long'})}</div><div class="days-grid">`;
+            let html = `<div class="month-box"><div style="text-align:center;font-weight:bold;margin-bottom:5px;background:#2c3e50;color:white;border-radius:4px;padding:3px;">${new Date(year, m).toLocaleString('de-DE', {month:'long'})}</div><div class="days-grid">`;
             for(let d=1; d<=new Date(year,m+1,0).getDate(); d++) {
                 let ds = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 let b = db.find(x => x.wohnung === apt && ds >= x.anreise && ds < x.abreise);
@@ -176,24 +189,34 @@
     }
 
     function renderTable() {
-        const tbody = document.getElementById('belegungsDaten'); tbody.innerHTML = '';
+        const tbody = document.getElementById('belegungsDaten'); 
+        if(!tbody) return;
+        tbody.innerHTML = '';
         db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
             const done = isDone(b);
             tbody.innerHTML += `<tr onclick="editEntry('${b.id}')" style="cursor:pointer;"><td><strong>${b.name || "Booking.com"}</strong></td><td>${b.wohnung}</td><td>${b.anreise}</td><td><span class="status-badge ${done?'status-done':'status-open'}">${done?'EINGECHECKT':'OFFEN'}</span></td></tr>`;
         });
     }
 
-    async function saveToCloud(entry) {
-        document.getElementById('loading-overlay').style.display = 'flex';
-        await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
-        setTimeout(loadFromCloud, 2500);
-        showView('visual');
+    function showView(v) {
+        ['view-visual', 'view-kalender', 'view-form', 'view-year'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.add('hidden');
+        });
+        document.getElementById('view-' + v).classList.remove('hidden');
+        if(v === 'visual') renderTimeline();
+        if(v === 'year') renderYear();
+        if(v === 'kalender') renderTable();
+        if(v === 'form') setTimeout(resizeCanvas, 150);
     }
 
-    function showView(v) {
-        ['view-visual', 'view-kalender', 'view-form', 'view-year'].forEach(id => document.getElementById(id).classList.add('hidden'));
-        document.getElementById('view-' + v).classList.remove('hidden');
-        if(v === 'form') setTimeout(resizeCanvas, 150);
+    async function saveToCloud(entry) {
+        document.getElementById('loading-overlay').style.display = 'flex';
+        try {
+            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
+            setTimeout(loadFromCloud, 2500);
+            showView('visual');
+        } catch (e) { alert("Speicherfehler"); document.getElementById('loading-overlay').style.display = 'none'; }
     }
 
     function editEntry(id) {
