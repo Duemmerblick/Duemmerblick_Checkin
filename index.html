@@ -3,80 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v7.1</title>
+    <title>Dümmerblick Manager v7.3</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
         
-        /* Login Overlay */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; flex-direction: column; }
-        #pass-input { width: 80%; max-width: 280px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; }
-        .btn-login { background: var(--success); color: white; width: 80%; max-width: 280px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        /* LOGIN OVERLAY - RADIKAL VEREINFACHT FÜR MOBILE */
+        #login-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--primary); display: flex; justify-content: center; 
+            align-items: center; z-index: 10000; color: white; flex-direction: column; 
+        }
+        .login-box { width: 90%; max-width: 320px; text-align: center; }
+        
+        #pass-input { 
+            width: 100%; padding: 18px; border-radius: 12px; border: 2px solid transparent; 
+            margin-bottom: 20px; text-align: center; font-size: 20px; box-sizing: border-box;
+            background: white; color: #000; -webkit-appearance: none;
+        }
+        
+        .btn-login { 
+            background: var(--success); color: white; width: 100%; padding: 20px; 
+            border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 20px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3); touch-action: none;
+        }
 
         .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .nav { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
-        .nav button { flex: 1; min-width: 80px; padding: 15px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 12px; }
+        .nav button { flex: 1; min-width: 80px; padding: 15px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 12px; cursor: pointer; }
         .btn-blue { background: var(--secondary); }
         .btn-green { background: var(--success); }
         .btn-orange { background: #e67e22; }
         .btn-gray { background: #95a5a6; }
 
         .hidden { display: none !important; }
-        
-        /* RADIKALER ANDROID FIX FÜR BESCHRIFTUNGEN */
-        .field-container { margin-bottom: 20px; background: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-        .field-label { 
-            background: #eee; padding: 8px 12px; font-size: 12px; 
-            font-weight: bold; color: #555; border-bottom: 1px solid #ddd; 
-            display: block; text-transform: uppercase;
-        }
-        input, select { 
-            width: 100%; padding: 12px; border: none; font-size: 16px; 
-            box-sizing: border-box; background: transparent; color: #000;
-            min-height: 45px; display: block;
-        }
-        
-        /* Speziell für Datumsfelder auf Android */
-        input[type="date"] { min-height: 50px; background-color: #ffffff !important; color: #000000 !important; }
+        .field-container { margin-bottom: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #555; border-bottom: 1px solid #ddd; display: block; }
+        input, select { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; background: #fff; color: #000; min-height: 45px; }
 
-        .timeline-container { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; }
-        .year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 10px; }
-        .month-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; }
-        .month-title { text-align: center; font-weight: bold; margin-bottom: 10px; background: var(--primary); color: white; border-radius: 4px; padding: 5px; }
-        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
-        .day { padding: 8px 0; border-radius: 4px; background: #f8f9fa; border: 1px solid #eee; font-size: 12px; }
-        .day.booked { background: var(--secondary); color: white; }
-        .day.checked-in { background: var(--success); color: white; }
-
-        #signature-pad { background: #fafafa; width: 100%; height: 220px; touch-action: none; border-top: 1px solid #ddd; }
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; }
-    </style>
-</head>
-<body>
-
-<div id="login-overlay">
-    <h2>Dümmerblick</h2>
-    <input type="password" id="pass-input" placeholder="Passwort" autocorrect="off" autocapitalize="none">
-    <button id="login-btn" class="btn-login">ANMELDEN</button>
-</div>
-
-<div id="loading-overlay">Daten werden abgeglichen...</div>
-
-<div class="container hidden" id="app-content">
-    <div class="nav">
-        <button class="btn-blue" id="nav-visual">📊 30 Tage</button>
-        <button class="btn-orange" id="nav-year">🗓️ Jahr</button>
-        <button class="btn-green" id="nav-list">📋 Liste</button>
-        <button class="btn-gray" id="nav-new">➕ NEU</button>
-    </div>
-
-    <div id="view-visual" class="content-view">
-        <div id="timeline" style="overflow-x:auto;"></div>
-    </div>
-
-    <div id="view-year" class="content-view hidden">
-        <div class="field-container"><span class="field-label">Jahr</span><select id="year-select"></select></div>
-        <div class="field-container"><span class="field-label">Wohnung</span><select id="apt-filter"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
-        <div id="year-container" class="year-grid"></div>
+        #signature-pad { background: #fafafa; width: 100%; height: 200px; touch-action: none; border-top: 1px solid #ddd; }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height
