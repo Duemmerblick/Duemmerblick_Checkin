@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v6.9</title>
+    <title>Dümmerblick Manager v7.0</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
@@ -23,16 +23,24 @@
 
         .hidden { display: none !important; }
         
-        /* Jahres-Planer NEU */
-        .year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 10px; min-height: 100px; }
-        .month-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        /* Formular Styling für Android Fix */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: var(--primary); font-size: 14px; }
+        input, select { 
+            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; 
+            font-size: 16px; box-sizing: border-box; background-color: #fff;
+            color: #333; height: 50px; /* Feste Höhe für bessere Android-Darstellung */
+        }
+        
+        /* Jahres-Planer */
+        .year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 10px; }
+        .month-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; }
         .month-title { text-align: center; font-weight: bold; margin-bottom: 10px; background: var(--primary); color: white; border-radius: 4px; padding: 5px; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
         .day { padding: 8px 0; border-radius: 4px; background: #f8f9fa; border: 1px solid #eee; font-size: 12px; }
         .day.booked { background: var(--secondary); color: white; }
         .day.checked-in { background: var(--success); color: white; }
 
-        input, select { width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
         #signature-pad { border: 2px dashed #ccc; background: #fafafa; width: 100%; height: 200px; touch-action: none; border-radius: 8px; }
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
     </style>
@@ -60,16 +68,16 @@
     </div>
 
     <div id="view-year" class="content-view hidden">
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <select id="year-select"></select>
-            <select id="apt-filter"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <div style="flex:1"><label style="font-size:12px; font-weight:bold;">Jahr</label><select id="year-select"></select></div>
+            <div style="flex:1"><label style="font-size:12px; font-weight:bold;">Wohnung</label><select id="apt-filter"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
         </div>
-        <div id="year-container" class="year-grid">Wähle Jahr/Wohnung...</div>
+        <div id="year-container" class="year-grid"></div>
     </div>
 
     <div id="view-kalender" class="content-view hidden">
         <table style="width:100%; border-collapse:collapse;" id="g-table">
-            <thead><tr style="text-align:left;"><th>Gast</th><th>Haus</th><th>Datum</th></tr></thead>
+            <thead><tr style="text-align:left; border-bottom: 2px solid #eee;"><th>Gast</th><th>Haus</th><th>Datum</th></tr></thead>
             <tbody id="belegungsDaten"></tbody>
         </table>
     </div>
@@ -77,13 +85,39 @@
     <div id="view-form" class="content-view hidden">
         <form id="checkinForm">
             <input type="hidden" id="f-id">
-            <select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
-            <input type="text" id="gastName" placeholder="Gast Name" required>
-            <input type="date" id="anreise" required>
-            <input type="date" id="abreise" required>
-            <input type="text" id="anschrift" placeholder="Anschrift">
-            <canvas id="signature-pad"></canvas>
-            <button type="submit" class="btn-green" style="width:100%; height:60px;">💾 SPEICHERN</button>
+            
+            <div class="form-group">
+                <label>Ferienwohnung wählen</label>
+                <select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
+            </div>
+
+            <div class="form-group">
+                <label>Vollständiger Name des Gastes</label>
+                <input type="text" id="gastName" placeholder="z.B. Max Mustermann" required>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label>Anreise am</label>
+                    <input type="date" id="anreise" required>
+                </div>
+                <div class="form-group">
+                    <label>Abreise am</label>
+                    <input type="date" id="abreise" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Anschrift (Straße, Hausnr, PLZ, Ort)</label>
+                <input type="text" id="anschrift" placeholder="Daten des Gastes">
+            </div>
+
+            <div class="form-group">
+                <label>Unterschrift des Gastes</label>
+                <canvas id="signature-pad"></canvas>
+            </div>
+
+            <button type="submit" class="btn-green" style="width:100%; height:60px; font-size:18px; margin-bottom:20px;">💾 SPEICHERN & CLOUD SYNC</button>
         </form>
     </div>
 </div>
@@ -97,14 +131,12 @@
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
-    // Setup Jahr-Dropdown
     const curY = new Date().getFullYear();
     const ys = document.getElementById('year-select');
     for(let y=curY-1; y<=curY+2; y++) {
         let o = document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; ys.appendChild(o);
     }
 
-    // Zentrale View-Steuerung
     function showView(v) {
         document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
         if(v === 'visual') { document.getElementById('view-visual').classList.remove('hidden'); renderTimeline(); }
@@ -136,8 +168,9 @@
         document.getElementById('loading-overlay').style.display = 'flex';
         try {
             const r = await fetch(API_URL + "?nocache=" + Date.now());
-            db = await r.json();
+            db = await resp = await r.json();
             renderTimeline();
+            renderYear();
         } catch(e) { console.error(e); }
         document.getElementById('loading-overlay').style.display = 'none';
     }
@@ -146,8 +179,6 @@
         const year = parseInt(document.getElementById('year-select').value);
         const apt = document.getElementById('apt-filter').value;
         const cont = document.getElementById('year-container');
-        cont.innerHTML = 'Generiere Kalender...';
-        
         let fullHtml = '';
         for (let m=0; m<12; m++) {
             let mName = new Date(year, m).toLocaleString('de-DE', {month:'long'});
@@ -156,7 +187,7 @@
             for(let d=1; d<=days; d++) {
                 let ds = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 let b = db.find(x => x.wohnung === apt && ds >= x.anreise && ds < x.abreise);
-                let cls = b ? (b.signature.length > 500 ? 'checked-in' : 'booked') : '';
+                let cls = b ? (b.signature && b.signature.length > 500 ? 'checked-in' : 'booked') : '';
                 html += `<div class="day ${cls}">${d}</div>`;
             }
             fullHtml += html + `</div></div>`;
@@ -164,7 +195,6 @@
         cont.innerHTML = fullHtml;
     }
 
-    // Trigger für Dropdowns
     document.getElementById('year-select').onchange = renderYear;
     document.getElementById('apt-filter').onchange = renderYear;
 
@@ -185,7 +215,7 @@
                 if(dS + dur >= 0 && dS <= 30) {
                     let st = Math.max(0, dS); let en = Math.min(31, dS + dur);
                     let w = (en - st) * 45;
-                    if(w > 5) h += `<div onclick="editEntry('${b.id}')" style="position:absolute; left:${140+(st*45)}px; width:${w-4}px; height:30px; top:10px; background:${b.signature.length > 500 ? '#27ae60':'#3498db'}; color:white; border-radius:5px; padding:5px; font-size:10px; z-index:10; overflow:hidden;">${b.name || 'Booking'}</div>`;
+                    if(w > 5) h += `<div onclick="editEntry('${b.id}')" style="position:absolute; left:${140+(st*45)}px; width:${w-4}px; height:30px; top:10px; background:${b.signature && b.signature.length > 500 ? '#27ae60':'#3498db'}; color:white; border-radius:5px; padding:5px; font-size:10px; z-index:10; overflow:hidden;">${b.name || 'Booking'}</div>`;
                 }
             });
             h += '</div>';
@@ -197,7 +227,7 @@
         const tbody = document.getElementById('belegungsDaten'); tbody.innerHTML = '';
         db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
             let tr = document.createElement('tr');
-            tr.innerHTML = `<td>${b.name || 'Booking'}</td><td>${b.wohnung}</td><td>${b.anreise}</td>`;
+            tr.innerHTML = `<td style="padding:12px 8px;"><b>${b.name || 'Booking'}</b></td><td style="font-size:12px;">${b.wohnung}</td><td style="font-size:12px;">${b.anreise}</td>`;
             tr.onclick = () => editEntry(b.id);
             tbody.appendChild(tr);
         });
@@ -214,7 +244,7 @@
         document.getElementById('anschrift').value = b.anschrift || "";
         showView('form');
         clearSig();
-        if(b.signature.length > 500) { let img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = b.signature; }
+        if(b.signature && b.signature.length > 500) { let img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = b.signature; }
     }
 
     async function save(entry) {
