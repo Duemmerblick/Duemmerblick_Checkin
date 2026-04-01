@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v6 Secure</title>
+    <title>Dümmerblick Manager v6 Full Cloud</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; color: #333; }
@@ -14,41 +14,70 @@
         button { flex: 1; min-width: 120px; padding: 15px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; }
         .btn-blue { background: var(--secondary); color: white; }
         .btn-green { background: var(--success); color: white; }
+        .btn-orange { background: #e67e22; color: white; }
         .btn-gray { background: #95a5a6; color: white; }
+        
+        /* Timeline Styling */
+        .timeline-container { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; margin-top: 10px; }
+        .timeline-grid { display: grid; grid-template-columns: 160px repeat(31, 45px); min-width: 1550px; position: relative; border-bottom: 1px solid #eee; }
+        .apt-label { padding: 20px 10px; font-weight: bold; background: #eee; border-right: 2px solid #ddd; display: flex; align-items: center; }
+        .day-cell { text-align: center; padding: 10px 0; font-size: 11px; border-right: 1px solid #eee; }
+        .booking-bar { height: 34px; margin: 12px 0; border-radius: 6px; background: var(--secondary); color: white; font-size: 11px; padding: 0 8px; position: absolute; z-index: 10; cursor: pointer; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .booking-bar.done { background: var(--success); }
+
+        /* Jahres-Planer Styling */
+        .year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; margin-top: 15px; }
+        .month-box { border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #fff; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 11px; }
+        .day { padding: 5px 0; border-radius: 3px; background: #f8f9fa; border: 1px solid #eee; }
+        .day.booked { background: var(--secondary); color: white; }
+        .day.checked-in { background: var(--success); color: white; }
+
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
         .hidden { display: none !important; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         #signature-pad { border: 2px dashed #ccc; background: #fafafa; width: 100%; height: 220px; touch-action: none; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; }
-        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
-        .status-done { background: #d4edda; color: #155724; }
-        .status-open { background: #fff3cd; color: #856404; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <h2>Dümmerblick Verwaltung</h2>
-    <p>Bitte Passwort eingeben:</p>
     <input type="password" id="pass-input" placeholder="Passwort">
-    <button class="btn-green" style="flex:none; width: 250px;" onclick="checkPassword()">Anmelden</button>
-    <p id="pass-error" style="color: #e74c3c; margin-top: 10px;" class="hidden">Falsches Passwort!</p>
+    <button class="btn-green" style="width: 250px;" onclick="checkPassword()">Anmelden</button>
 </div>
 
-<div id="loading-overlay">Daten werden synchronisiert...</div>
+<div id="loading-overlay">Cloud-Abgleich...</div>
 
 <div class="container hidden" id="app-content">
     <div class="nav">
-        <button class="btn-blue" onclick="showView('visual')">📊 Übersicht</button>
+        <button class="btn-blue" onclick="showView('visual')">📊 30 Tage</button>
+        <button class="btn-orange" onclick="showView('year')">🗓️ Jahres-Plan</button>
         <button class="btn-green" onclick="showView('kalender')">📋 Gästeliste</button>
         <button class="btn-gray" onclick="prepareNew()">➕ NEU</button>
     </div>
-    <div id="view-visual"><h3>Cloud-Status: Bereit ✅</h3></div>
+
+    <div id="view-visual">
+        <h3>Aktuelle Belegung (30 Tage)</h3>
+        <div class="timeline-container" id="timeline"></div>
+    </div>
+
+    <div id="view-year" class="hidden">
+        <h3>Jahres-Übersicht</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+            <select id="year-select" onchange="renderYear()"></select>
+            <select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
+        </div>
+        <div class="year-grid" id="year-container"></div>
+    </div>
+
     <div id="view-kalender" class="hidden">
-        <h2>Buchungen</h2>
+        <h3>Gästeliste</h3>
         <table><thead><tr><th>Gast</th><th>Haus</th><th>Anreise</th><th>Status</th></tr></thead><tbody id="belegungsDaten"></tbody></table>
     </div>
+
     <div id="view-form" class="hidden">
         <h2>Check-In</h2>
         <form id="checkinForm">
@@ -63,7 +92,7 @@
             </div>
             <label>Anschrift</label><input type="text" id="anschrift">
             <label>Unterschrift</label><canvas id="signature-pad"></canvas>
-            <button type="submit" class="btn-green" style="width:100%; height:60px; margin-top:25px;">💾 SPEICHERN</button>
+            <button type="submit" class="btn-green" style="width:100%; height:60px; margin-top:25px;">💾 SPEICHERN & SYNC</button>
         </form>
     </div>
 </div>
@@ -77,14 +106,20 @@
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
+    // Jahre für Dropdown
+    const curY = new Date().getFullYear();
+    const ys = document.getElementById('year-select');
+    for(let y=curY-1; y<=curY+2; y++) {
+        let o = document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; ys.appendChild(o);
+    }
+
+    function isDone(b) { return b.anschrift && b.signature && b.signature.length > 500; }
+
     function checkPassword() {
-        const input = document.getElementById('pass-input').value;
-        if(input === MY_PASSWORD) {
+        if(document.getElementById('pass-input').value === MY_PASSWORD) {
             document.getElementById('login-overlay').classList.add('hidden');
             document.getElementById('app-content').classList.remove('hidden');
             loadFromCloud();
-        } else {
-            document.getElementById('pass-error').classList.remove('hidden');
         }
     }
 
@@ -93,36 +128,70 @@
         try {
             const resp = await fetch(API_URL + "?nocache=" + Date.now());
             db = await resp.json();
+            renderTimeline();
             renderTable();
+            renderYear();
         } catch (e) { console.error(e); }
         document.getElementById('loading-overlay').style.display = 'none';
-        showView('kalender');
+    }
+
+    function renderTimeline() {
+        const cont = document.getElementById('timeline'); cont.innerHTML = '';
+        const today = new Date(); today.setHours(0,0,0,0);
+        let h = '<div class="timeline-grid"><div class="apt-label">Tag</div>';
+        for(let i=0; i<=30; i++) {
+            let d = new Date(today); d.setDate(today.getDate()+i);
+            h += `<div class="day-cell"><b>${d.getDate()}</b><br>${d.getMonth()+1}.</div>`;
+        }
+        h += '</div>';
+        ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
+            h += `<div class="timeline-grid" style="height:60px;"><div class="apt-label">${apt}</div>`;
+            db.filter(b => b.wohnung === apt).forEach(b => {
+                let s = new Date(b.anreise); let e = new Date(b.abreise);
+                let dS = Math.floor((s - today) / 86400000); let dur = Math.ceil((e - s) / 86400000);
+                if(dS + dur >= 0 && dS <= 30) {
+                    let st = Math.max(0, dS); let en = Math.min(31, dS + dur);
+                    let w = (en - st) * 45;
+                    if(w > 5) h += `<div class="booking-bar ${isDone(b)?'done':''}" style="left:${160+(st*45)}px; width:${w-4}px;" onclick="editEntry('${b.id}')">${b.name || 'Booking.com'}</div>`;
+                }
+            });
+            h += '</div>';
+        });
+        cont.innerHTML = h;
+    }
+
+    function renderYear() {
+        const year = parseInt(document.getElementById('year-select').value);
+        const apt = document.getElementById('apt-filter').value;
+        const cont = document.getElementById('year-container'); cont.innerHTML = '';
+        for (let m=0; m<12; m++) {
+            let html = `<div class="month-box"><div style="text-align:center;font-weight:bold;margin-bottom:5px;background:#2c3e50;color:white;border-radius:4px;">${new Date(year, m).toLocaleString('de-DE', {month:'long'})}</div><div class="days-grid">`;
+            for(let d=1; d<=new Date(year,m+1,0).getDate(); d++) {
+                let ds = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                let b = db.find(x => x.wohnung === apt && ds >= x.anreise && ds < x.abreise);
+                html += `<div class="day ${b?(isDone(b)?'checked-in':'booked'):''}">${d}</div>`;
+            }
+            cont.innerHTML += html + `</div></div>`;
+        }
     }
 
     function renderTable() {
-        const tbody = document.getElementById('belegungsDaten');
-        tbody.innerHTML = '';
-        db.forEach(b => {
-            const isDone = b.anschrift && b.signature && b.signature.length > 500;
-            tbody.innerHTML += `<tr onclick="editEntry('${b.id}')" style="cursor:pointer;">
-                <td><strong>${b.name || "Booking.com"}</strong></td>
-                <td>${b.wohnung}</td>
-                <td>${b.anreise}</td>
-                <td><span class="status-badge ${isDone ? 'status-done' : 'status-open'}">${isDone ? 'EINGECHECKT' : 'OFFEN'}</span></td>
-            </tr>`;
+        const tbody = document.getElementById('belegungsDaten'); tbody.innerHTML = '';
+        db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
+            const done = isDone(b);
+            tbody.innerHTML += `<tr onclick="editEntry('${b.id}')" style="cursor:pointer;"><td><strong>${b.name || "Booking.com"}</strong></td><td>${b.wohnung}</td><td>${b.anreise}</td><td><span class="status-badge ${done?'status-done':'status-open'}">${done?'EINGECHECKT':'OFFEN'}</span></td></tr>`;
         });
     }
 
     async function saveToCloud(entry) {
         document.getElementById('loading-overlay').style.display = 'flex';
-        try {
-            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
-            setTimeout(loadFromCloud, 2500);
-        } catch (e) { alert("Fehler!"); document.getElementById('loading-overlay').style.display = 'none'; }
+        await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
+        setTimeout(loadFromCloud, 2500);
+        showView('visual');
     }
 
     function showView(v) {
-        ['view-visual', 'view-kalender', 'view-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        ['view-visual', 'view-kalender', 'view-form', 'view-year'].forEach(id => document.getElementById(id).classList.add('hidden'));
         document.getElementById('view-' + v).classList.remove('hidden');
         if(v === 'form') setTimeout(resizeCanvas, 150);
     }
@@ -145,14 +214,7 @@
     function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
     canvas.onmousedown = canvas.ontouchstart = (e) => { drawing = true; ctx.beginPath(); };
     window.onmouseup = window.ontouchend = () => drawing = false;
-    canvas.onmousemove = canvas.ontouchmove = (e) => { 
-        if(!drawing) return;
-        const r = canvas.getBoundingClientRect();
-        const x = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) - r.left;
-        const y = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) - r.top;
-        ctx.lineTo(x, y); ctx.stroke();
-        if(e.touches) e.preventDefault();
-    };
+    canvas.onmousemove = canvas.ontouchmove = (e) => { if(!drawing) return; const r = canvas.getBoundingClientRect(); const x = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) - r.left; const y = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) - r.top; ctx.lineTo(x, y); ctx.stroke(); if(e.touches) e.preventDefault(); };
 
     function prepareNew() { document.getElementById('checkinForm').reset(); document.getElementById('f-id').value = Date.now(); showView('form'); clearSig(); }
     document.getElementById('checkinForm').onsubmit = (e) => {
