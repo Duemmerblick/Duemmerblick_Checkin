@@ -140,25 +140,28 @@
     }
 
     async function saveToCloud(entry) {
-        document.getElementById('loading-overlay').style.display = 'flex';
-        try {
-            await fetch(API_URL, { 
-                method: 'POST', 
-                mode: 'no-cors', // Erlaubt das Senden an Google ohne Fehlermeldung
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry) 
-            });
-            
-            // Wichtig: Wir warten 2 Sekunden, damit Google Zeit zum Schreiben hat
-            setTimeout(() => {
-                loadFromCloud();
-            }, 2000);
-            
-        } catch (e) {
-            alert("Fehler beim Speichern!");
-            document.getElementById('loading-overlay').style.display = 'none';
-        }
+    document.getElementById('loading-overlay').style.display = 'flex';
+    try {
+        // Wir senden es als Text-Blob, das akzeptiert Google ohne CORS-Fehler
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(entry)
+        });
+        
+        // Kurze Pause, damit Google Zeit zum Wegschreiben hat
+        setTimeout(() => {
+            loadFromCloud();
+            showView('kalender');
+        }, 2500);
+        
+    } catch (e) {
+        console.error("Fehler:", e);
+        alert("Sende-Fehler! Bitte Verbindung prüfen.");
+        document.getElementById('loading-overlay').style.display = 'none';
     }
+}
 
     function editEntry(id) {
         const b = db.find(x => x.id == id);
