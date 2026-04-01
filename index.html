@@ -3,16 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v6.3</title>
+    <title>Dümmerblick Manager v6.4</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
         
-        /* Login fix: Schmal & Zentriert */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 2000; color: white; flex-direction: column; }
-        .login-box { width: 90%; max-width: 320px; text-align: center; background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; }
-        #login-overlay input { width: 100%; padding: 12px; border-radius: 8px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; box-sizing: border-box; }
-        .btn-login { background: var(--success); color: white; width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        /* Mobile Login Fix */
+        #login-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--primary); display: flex; justify-content: center; 
+            align-items: center; z-index: 9999; color: white; flex-direction: column; 
+        }
+        .login-box { width: 85%; max-width: 300px; text-align: center; }
+        #login-overlay h2 { margin-bottom: 20px; font-weight: 300; }
+        
+        /* Explizites Styling für das Input-Feld, damit Handys es erkennen */
+        #pass-input { 
+            width: 100%; padding: 15px; border-radius: 10px; border: 2px solid transparent; 
+            margin-bottom: 15px; text-align: center; font-size: 18px; box-sizing: border-box;
+            background: white; color: #333; display: block;
+            appearance: none; -webkit-appearance: none;
+        }
+        #pass-input:focus { border-color: var(--secondary); outline: none; }
+        
+        .btn-login { 
+            background: var(--success); color: white; width: 100%; padding: 15px; 
+            border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px;
+        }
 
         .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .nav { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
@@ -23,14 +40,12 @@
         .btn-gray { background: #95a5a6; color: white; }
         .btn-storno { background: var(--danger); color: white; padding: 8px; font-size: 11px; border-radius: 5px; flex: none; width: auto; }
 
-        /* Listen-Design */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; font-size: 14px; }
         .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
         .s-done { background: #d4edda; color: #155724; }
         .s-open { background: #fff3cd; color: #856404; }
 
-        /* Timeline & Year */
         .timeline-container { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; }
         .timeline-grid { display: grid; grid-template-columns: 140px repeat(31, 45px); min-width: 1530px; position: relative; border-bottom: 1px solid #eee; }
         .apt-label { padding: 15px 10px; font-weight: bold; background: #f1f1f1; border-right: 2px solid #ddd; }
@@ -39,7 +54,7 @@
         .booking-bar.done { background: var(--success); }
 
         .hidden { display: none !important; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         #signature-pad { border: 2px dashed #ccc; background: #fafafa; width: 100%; height: 200px; touch-action: none; border-radius: 8px; }
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
     </style>
@@ -48,10 +63,10 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2>Dümmerblick</h2>
-        <input type="password" id="pass-input" placeholder="Passwort">
+        <h2>Dümmerblick Login</h2>
+        <input type="password" id="pass-input" pattern="[0-9]*" inputmode="text" placeholder="Passwort eingeben" autocomplete="current-password">
         <button class="btn-login" onclick="checkPassword()">ANMELDEN</button>
-        <p id="pass-error" style="color: #ff7675; margin-top: 10px; font-size: 14px;" class="hidden">Falsches Passwort!</p>
+        <p id="pass-error" style="color: #ff7675; margin-top: 15px; font-size: 14px;" class="hidden">Falsches Passwort!</p>
     </div>
 </div>
 
@@ -80,10 +95,6 @@
 
     <div id="view-year" class="hidden">
         <h3>Jahres-Plan</h3>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-            <select id="year-select" onchange="renderYear()"></select>
-            <select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
-        </div>
         <div id="year-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:10px;"></div>
     </div>
 
@@ -113,12 +124,23 @@
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
+    // Automatischer Fokus-Versuch beim Laden
+    window.onload = () => {
+        const inp = document.getElementById('pass-input');
+        inp.focus();
+        // Workaround für iOS: Klick-Event simulieren
+        document.body.onclick = () => { if(!document.getElementById('login-overlay').classList.contains('hidden')) inp.focus(); };
+    };
+
     function checkPassword() {
         if(document.getElementById('pass-input').value === MY_PASSWORD) {
             document.getElementById('login-overlay').classList.add('hidden');
             document.getElementById('app-content').classList.remove('hidden');
             loadFromCloud();
-        } else { document.getElementById('pass-error').classList.remove('hidden'); }
+        } else { 
+            document.getElementById('pass-error').classList.remove('hidden');
+            document.getElementById('pass-input').value = '';
+        }
     }
 
     async function loadFromCloud() {
@@ -128,7 +150,7 @@
             db = await resp.json();
             renderTable();
             renderTimeline();
-        } catch (e) { alert("Verbindung fehlgeschlagen"); }
+        } catch (e) { console.error(e); }
         document.getElementById('loading-overlay').style.display = 'none';
     }
 
@@ -136,7 +158,7 @@
         const tbody = document.getElementById('belegungsDaten'); tbody.innerHTML = '';
         db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
             const isDone = b.anschrift && b.signature && b.signature.length > 500;
-            tbody.innerHTML += `<tr onclick="editEntry('${b.id}')" style="cursor:pointer;">
+            tbody.innerHTML += `<tr onclick="editEntry('${b.id}')">
                 <td><strong>${b.name || 'Booking.com'}</strong></td>
                 <td>${b.wohnung}</td>
                 <td>${b.anreise}</td>
@@ -147,7 +169,7 @@
 
     async function storno(e, id) {
         e.stopPropagation();
-        if(confirm("Buchung wirklich stornieren?")) {
+        if(confirm("Buchung stornieren?")) {
             document.getElementById('loading-overlay').style.display = 'flex';
             await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({id: id, delete: true}) });
             setTimeout(loadFromCloud, 2000);
@@ -155,7 +177,8 @@
     }
 
     function renderTimeline() {
-        const cont = document.getElementById('timeline'); cont.innerHTML = '';
+        const cont = document.getElementById('timeline'); if(!cont) return;
+        cont.innerHTML = '';
         const today = new Date(); today.setHours(0,0,0,0);
         let h = '<div class="timeline-grid"><div class="apt-label">Datum</div>';
         for(let i=0; i<=30; i++) {
