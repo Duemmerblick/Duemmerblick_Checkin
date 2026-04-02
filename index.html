@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v7.9</title>
+    <title>Dümmerblick Manager v8.0</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
@@ -140,10 +140,8 @@
         });
     }
 
-    // FIX FÜR DATUMS-FELDER
     function formatDateForInput(dateStr) {
         if (!dateStr) return "";
-        // Extrahiert nur die ersten 10 Zeichen (YYYY-MM-DD), falls Zeitstempel dabei sind
         const clean = dateStr.split("T")[0].trim();
         return clean;
     }
@@ -151,23 +149,17 @@
     function editEntry(id) {
         const b = db.find(x => x.id == id);
         if(!b) return;
-        
         document.getElementById('f-id').value = b.id;
         document.getElementById('wohnung').value = b.wohnung;
         document.getElementById('gastName').value = b.name;
-        
-        // Hier wird das Datum jetzt "geputzt"
         document.getElementById('anreise').value = formatDateForInput(b.anreise);
         document.getElementById('abreise').value = formatDateForInput(b.abreise);
-        
         document.getElementById('email').value = b.email || "";
         document.getElementById('telefon').value = b.telefon || "";
         document.getElementById('ausweis').value = b.ausweis || "";
         document.getElementById('anschrift').value = b.anschrift || "";
-        
         showView('form');
         clearSig();
-        
         if(b.signature && b.signature.length > 500) {
             let img = new Image();
             img.onload = () => ctx.drawImage(img, 0, 0);
@@ -203,6 +195,7 @@
         }
     }
 
+    // VERBESSERTE TIMELINE MIT BETTENWECHSEL-LÜCKE
     function renderTimeline() {
         const cont = document.getElementById('timeline'); cont.innerHTML = '';
         const today = new Date(); today.setHours(0,0,0,0);
@@ -220,7 +213,8 @@
                 if(dS + dur >= 0 && dS <= 30) {
                     let st = Math.max(0, dS); let en = Math.min(31, dS + dur);
                     let w = (en - st) * 45;
-                    if(w > 5) h += `<div onclick="editEntry('${b.id}')" style="position:absolute; left:${140+(st*45)}px; width:${w-4}px; height:30px; top:10px; background:${b.signature && b.signature.length > 500 ? '#27ae60':'#3498db'}; color:white; border-radius:5px; padding:5px; font-size:10px; z-index:10; overflow:hidden;">${b.name}</div>`;
+                    // HIER DER TRICK: Wir rücken den Balken links und rechts 4px ein
+                    if(w > 5) h += `<div onclick="editEntry('${b.id}')" style="position:absolute; left:${140+(st*45)+4}px; width:${w-8}px; height:30px; top:10px; background:${b.signature && b.signature.length > 500 ? '#27ae60':'#3498db'}; color:white; border-radius:5px; padding:5px; font-size:10px; z-index:10; overflow:hidden; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); line-height:20px;">${b.name}</div>`;
                 }
             });
             h += '</div>';
