@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v7.6</title>
+    <title>Dümmerblick Manager v7.7</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
         
-        /* Login */
+        /* Login Bereich */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; color: white; flex-direction: column; }
         #pass-input { width: 280px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 20px; text-align: center; font-size: 18px; color: #000; }
         .btn-login { background: var(--success); color: white; width: 280px; padding: 20px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; }
@@ -23,32 +23,34 @@
 
         .hidden { display: none !important; }
         
-        /* Status Badges */
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; white-space: nowrap; }
+        /* Status Badges & Liste */
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
         .s-done { background: #d4edda; color: #155724; }
         .s-open { background: #fff3cd; color: #856404; }
         .btn-storno { background: var(--danger); color: white; padding: 6px 10px; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
 
-        /* Eingabefelder */
-        .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        /* Formular Felder (Android Fix) */
+        .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
         .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #555; display: block; border-bottom: 1px solid #ddd; text-transform: uppercase; }
-        input, select { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; background: #fff; color: #000; }
+        input, select { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; background: #fff; color: #000; min-height: 45px; }
 
-        /* Listen-Ansicht Optimierung */
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: #f8f9fa; padding: 10px; text-align: left; border-bottom: 2px solid #eee; }
-        td { padding: 12px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
-
+        /* Layouts */
+        .year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+        .month-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; }
         #signature-pad { background: #fafafa; width: 100%; height: 200px; touch-action: none; border-top: 1px solid #ddd; }
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; background: #f8f9fa; padding: 10px; border-bottom: 2px solid #eee; font-size: 12px; }
+        td { padding: 12px 8px; border-bottom: 1px solid #eee; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
-    <h2 style="margin-bottom:20px;">Dümmerblick Login</h2>
+    <h2 style="margin-bottom:20px;">Dümmerblick Manager</h2>
     <input type="text" id="pass-input" placeholder="Passwort" autocorrect="off" autocapitalize="none">
     <button onclick="handleLogin()" class="btn-login">ANMELDEN</button>
+    <p id="pass-error" style="color: #ff7675; margin-top: 15px;" class="hidden">Falsches Passwort!</p>
 </div>
 
 <div id="loading-overlay">Daten werden geladen...</div>
@@ -70,7 +72,7 @@
             <select id="year-select" onchange="renderYear()"></select>
             <select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
         </div>
-        <div id="year-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:10px;"></div>
+        <div id="year-container" class="year-grid"></div>
     </div>
 
     <div id="view-kalender" class="content-view hidden">
@@ -83,18 +85,18 @@
     <div id="view-form" class="content-view hidden">
         <form id="checkinForm">
             <input type="hidden" id="f-id">
-            <div class="field-box"><span class="field-label">WOHNUNG</span><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
-            <div class="field-box"><span class="field-label">NAME</span><input type="text" id="gastName" required></div>
+            <div class="field-box"><span class="field-label">Wohnung</span><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
+            <div class="field-box"><span class="field-label">Gast Name</span><input type="text" id="gastName" required></div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <div class="field-box"><span class="field-label">ANREISE</span><input type="date" id="anreise" required></div>
-                <div class="field-box"><span class="field-label">ABREISE</span><input type="date" id="abreise" required></div>
+                <div class="field-box"><span class="field-label">Anreise</span><input type="date" id="anreise" required></div>
+                <div class="field-box"><span class="field-label">Abreise</span><input type="date" id="abreise" required></div>
             </div>
-            <div class="field-box"><span class="field-label">E-MAIL ADRESSE</span><input type="email" id="email"></div>
-            <div class="field-box"><span class="field-label">TELEFONNUMMER</span><input type="tel" id="telefon"></div>
-            <div class="field-box"><span class="field-label">AUSWEISNUMMER</span><input type="text" id="ausweis"></div>
-            <div class="field-box"><span class="field-label">ANSCHRIFT</span><input type="text" id="anschrift"></div>
-            <div class="field-box"><span class="field-label">UNTERSCHRIFT</span><canvas id="signature-pad"></canvas></div>
-            <button type="submit" class="btn-green" style="width:100%; height:60px;">💾 SPEICHERN</button>
+            <div class="field-box"><span class="field-label">E-Mail Adresse</span><input type="email" id="email"></div>
+            <div class="field-box"><span class="field-label">Telefonnummer</span><input type="tel" id="telefon"></div>
+            <div class="field-box"><span class="field-label">Ausweisnummer</span><input type="text" id="ausweis"></div>
+            <div class="field-box"><span class="field-label">Anschrift</span><input type="text" id="anschrift"></div>
+            <div class="field-box"><span class="field-label">Unterschrift</span><canvas id="signature-pad"></canvas></div>
+            <button type="submit" class="btn-green" style="width:100%; height:60px; font-size:18px; margin-bottom:20px;">💾 SPEICHERN</button>
         </form>
     </div>
 </div>
@@ -136,6 +138,8 @@
             const r = await fetch(API_URL + "?nocache=" + Date.now());
             db = await r.json();
             renderTimeline();
+            renderTable();
+            renderYear();
         } catch(e) { console.log(e); }
         document.getElementById('loading-overlay').style.display = 'none';
     }
@@ -156,7 +160,7 @@
     }
 
     async function storno(id) {
-        if(confirm("Buchung wirklich stornieren?")) {
+        if(confirm("Buchung wirklich komplett löschen (Storno)?")) {
             document.getElementById('loading-overlay').style.display = 'flex';
             await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({id: id, delete: true}) });
             setTimeout(() => { load(); showView('list'); }, 2000);
@@ -240,12 +244,12 @@
         let o = document.createElement('option'); o.value=y; o.innerText=y; if(y===curYear) o.selected=true; ySel.appendChild(o);
     }
 
-    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; }
+    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#000"; }
+    function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
     const getPos = (e) => { const r = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; return { x: cX - r.left, y: cY - r.top }; };
     canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); e.preventDefault(); });
     canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); });
     window.addEventListener('touchend', () => drawing = false);
-    function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 </script>
 </body>
 </html>
