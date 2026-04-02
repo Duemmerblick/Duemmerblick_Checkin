@@ -1,188 +1,114 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v11.9</title>
-    <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --orange: #e67e22; --light: #f4f7f6; }
-        body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
-        #login-overlay { position: fixed; inset: 0; background: var(--primary); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; color: white; }
-        #pass-input { width: 260px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; color: #000; }
-        .btn-login { background: var(--success); color: white; width: 260px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; }
-        .container { width: 100%; max-width: 1200px; margin: auto; background: white; min-height: 100vh; padding-bottom: 80px; }
-        .nav-top { display: flex; gap: 4px; padding: 10px; background: #fff; border-bottom: 1px solid #ddd; }
-        .nav-top button { flex: 1; padding: 12px 2px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 10px; }
-        .btn-blue { background: var(--secondary); }
-        .btn-green { background: var(--success); }
-        .btn-orange { background: var(--orange); }
-        .btn-gray { background: #95a5a6; }
-        .hidden { display: none !important; }
-        .timeline-wrapper { display: flex; border: 1px solid #ddd; margin: 10px; border-radius: 8px; overflow: hidden; }
-        .timeline-labels { width: 130px; min-width: 130px; background: #f9f9f9; border-right: 2px solid #ddd; }
-        .label-cell { height: 60px; padding: 0 10px; display: flex; align-items: center; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee; }
-        .timeline-scroll { flex: 1; overflow-x: auto; position: relative; }
-        .grid-container { position: relative; min-width: 1400px; } 
-        .grid-header { display: flex; height: 35px; background: #eee; border-bottom: 1px solid #ddd; }
-        .day-label { width: 45px; min-width: 45px; text-align: center; line-height: 35px; font-size: 10px; border-right: 1px solid #ddd; }
-        .grid-row { height: 60px; display: flex; border-bottom: 1px solid #eee; position: relative; }
-        .grid-cell { width: 45px; min-width: 45px; border-right: 1px solid #f8f8f8; }
-        .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 6px; font-size: 9px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; overflow: hidden; }
-        #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .note-card { background: #fff9f0; border-left: 4px solid var(--orange); padding: 12px; margin-bottom: 10px; border-radius: 6px; font-size: 14px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    </style>
-</head>
-<body>
+// ==========================================
+// DÜMMERBLICK MANAGER - BACKEND v12.1
+// ==========================================
+var SHEET_BUCHUNGEN = "Buchungen"; 
+var SHEET_NOTIZEN = "Notizen";
 
-<div id="login-overlay">
-    <h2>Dümmerblick Manager</h2>
-    <input type="text" id="pass-input" placeholder="Passwort">
-    <button onclick="var p=document.getElementById('pass-input').value.toLowerCase().trim(); if(p==='duemmer123'){document.getElementById('login-overlay').style.display='none'; document.getElementById('app-content').classList.remove('hidden'); load();}else{alert('Passwort falsch');}" class="btn-login">ANMELDEN</button>
-</div>
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. BUCHUNGEN LADEN
+  var bSheet = ss.getSheetByName(SHEET_BUCHUNGEN);
+  var bData = bSheet.getDataRange().getValues();
+  var buchungen = [];
+  for (var i = 1; i < bData.length; i++) {
+    if(!bData[i][0]) continue;
+    buchungen.push({
+      id: bData[i][0], wohnung: bData[i][1], name: bData[i][2],
+      anreise: Utilities.formatDate(new Date(bData[i][3]), "GMT+1", "yyyy-MM-dd"),
+      abreise: Utilities.formatDate(new Date(bData[i][4]), "GMT+1", "yyyy-MM-dd"),
+      signature: bData[i][9] || ""
+    });
+  }
 
-<div id="loading-overlay"><b>Daten werden synchronisiert...</b></div>
-
-<div class="container hidden" id="app-content">
-    <div class="nav-top">
-        <button class="btn-blue" onclick="showView('visual')">📊 30 Tage</button>
-        <button class="btn-orange" onclick="showView('year')">🗓️ Jahr</button>
-        <button class="btn-green" onclick="showView('list')">📋 Liste</button>
-        <button class="btn-gray" onclick="showView('note')">📝 NOTIZEN</button>
-    </div>
-
-    <div id="view-visual" class="content-view">
-        <div class="timeline-wrapper">
-            <div class="timeline-labels"><div class="label-cell" style="height:35px; background:#eee;">Einheit</div><div class="label-cell">Dümmerblick 1</div><div class="label-cell">Dümmerblick 2</div></div>
-            <div class="timeline-scroll"><div class="grid-container" id="timeline-grid"></div></div>
-        </div>
-    </div>
-
-    <div id="view-year" class="content-view hidden">
-        <div style="padding:10px; display:flex; gap:10px;">
-            <select id="year-select" onchange="renderYear()"></select>
-            <select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
-        </div>
-        <div id="year-container" style="padding:10px; display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;"></div>
-    </div>
-
-    <div id="view-kalender" class="content-view hidden">
-        <table style="width:100%; border-collapse:collapse;"><tbody id="belegungsDaten"></tbody></table>
-    </div>
-
-    <div id="view-note" class="content-view hidden" style="padding:15px;">
-        <h3 style="margin:0 0 10px 0;">Neue Notiz</h3>
-        <select id="n-wohnung" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px; border-radius: 8px;"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
-        <textarea id="n-text" rows="3" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px; border-radius: 8px;" placeholder="Text..."></textarea>
-        <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; font-weight:bold; border:none; border-radius:8px;">SPEICHERN</button>
-        <h3 style="margin-top:20px; border-top: 1px solid #eee; padding-top:15px;">Verlauf</h3>
-        <div id="notiz-liste"></div>
-    </div>
-</div>
-
-<script>
-    const API = "https://script.google.com/macros/s/AKfycbz2Zc_j8243m_luUJVRxfVjGkY1_Sp461xiHsRDXo6udla8NmigkJRXe0sXOEdse6Pz/exec"; 
-
-    let db = []; let notes = [];
-
-    async function load() {
-        document.getElementById('loading-overlay').style.display = 'flex';
-        try {
-            const r = await fetch(API + "?nocache=" + Date.now());
-            const data = await r.json();
-            
-            if (data.buchungen) {
-                db = data.buchungen;
-                notes = data.notizen || [];
-            } else {
-                db = data; 
-                notes = [];
-            }
-            
-            renderTimeline(); renderTable(); renderNotes(); renderYear();
-        } catch(e) { 
-            console.error("Ladefehler:", e);
-        }
-        document.getElementById('loading-overlay').style.display = 'none';
-    }
-
-    function renderNotes() {
-        const cont = document.getElementById('notiz-liste');
-        if (!notes || notes.length === 0) {
-            cont.innerHTML = '<small style="color:#999;">Keine Notizen in der Datenbank.</small>';
-            return;
-        }
-        cont.innerHTML = notes.map(n => `<div class="note-card"><b>${n.zeit} - ${n.wohnung}</b><br>${n.text}</div>`).join('');
-    }
-
-    function showView(v) {
-        document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
-        const target = (v === 'list') ? 'view-kalender' : 'view-' + v;
-        document.getElementById(target).classList.remove('hidden');
-        if(v === 'visual') renderTimeline();
-        if(v === 'year') renderYear();
-    }
-
-    function renderTimeline() {
-        const grid = document.getElementById('timeline-grid'); grid.innerHTML = '';
-        const today = new Date(); today.setHours(0,0,0,0);
-        let header = '<div class="grid-header">';
-        for(let i=0; i<=30; i++) { let d = new Date(today); d.setDate(today.getDate()+i); header += `<div class="day-label">${d.getDate()}.${d.getMonth()+1}</div>`; }
-        header += '</div>'; grid.innerHTML += header;
-        ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
-            let row = `<div class="grid-row">`; for(let i=0; i<=30; i++) { row += `<div class="grid-cell"></div>`; }
-            db.filter(b => b.wohnung === apt).forEach(b => {
-                let s = new Date(b.anreise); let e = new Date(b.abreise);
-                let diff = Math.floor((s - today) / 86400000); let dur = Math.ceil((e - s) / 86400000);
-                if(diff + dur >= 0 && diff <= 30) {
-                    let left = (diff * 45) + 22.5; let w = (dur * 45);
-                    row += `<div class="booking-bar" style="left:${left}px; width:${w-4}px; background:${b.signature && b.signature.length > 500 ?'#27ae60':'#3498db'}; text-align:center; line-height:34px; color:white;">${b.name}</div>`;
-                }
-            });
-            grid.innerHTML += row + '</div>';
+  // 2. NOTIZEN LADEN (Nur offene)
+  var notizen = [];
+  var nSheet = ss.getSheetByName(SHEET_NOTIZEN);
+  if (nSheet) {
+    var nData = nSheet.getDataRange().getValues();
+    for (var j = nData.length - 1; j >= 1; j--) {
+      // Notiz nur laden, wenn Spalte D NICHT "erledigt" ist
+      if (nData[j][2] && nData[j][3] !== "erledigt") {
+        var d = nData[j][0];
+        var zeitStr = (d instanceof Date) ? Utilities.formatDate(d, "GMT+1", "dd.MM. HH:mm") : d.toString();
+        notizen.push({
+          row: j + 1, 
+          zeit: zeitStr,
+          wohnung: nData[j][1] || "Allgemein",
+          text: nData[j][2].toString()
         });
+      }
     }
+  }
+  return ContentService.createTextOutput(JSON.stringify({ buchungen: buchungen, notizen: notizen })).setMimeType(ContentService.MimeType.JSON);
+}
 
-    function renderTable() {
-        const tb = document.getElementById('belegungsDaten'); tb.innerHTML = '';
-        db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
-            const sig = b.signature && b.signature.length > 500;
-            tb.innerHTML += `<tr style="border-bottom:1px solid #eee;"><td style="padding:15px;"><b>${b.name}</b><br><small>${b.wohnung}</small></td><td>${b.anreise}</td><td><span style="padding:4px 8px; border-radius:10px; font-size:10px; background:${sig?'#d4edda':'#fff3cd'}">${sig?'OK':'OFFEN'}</span></td></tr>`;
-        });
-    }
+function doPost(e) {
+  var params = JSON.parse(e.postData.contents);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var nSheet = ss.getSheetByName(SHEET_NOTIZEN) || ss.insertSheet(SHEET_NOTIZEN);
 
-    function renderYear() {
-        const year = parseInt(document.getElementById('year-select').value) || new Date().getFullYear();
-        const apt = document.getElementById('apt-filter').value;
-        const cont = document.getElementById('year-container'); cont.innerHTML = '';
-        for(let m=0; m<12; m++) {
-            let mName = new Date(year, m).toLocaleString('de-DE', {month:'long'});
-            let h = `<div style="background:#fff; padding:10px; border-radius:8px; border:1px solid #ddd;"><div style="text-align:center; font-weight:bold; background:#2c3e50; color:white; padding:5px; border-radius:4px; margin-bottom:5px;">${mName}</div><div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px;">`;
-            let dMax = new Date(year, m+1, 0).getDate();
-            for(let d=1; d<=dMax; d++) {
-                let ds = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                let b = db.find(x => x.wohnung === apt && ds >= x.anreise && ds < x.abreise);
-                let col = b ? (b.signature && b.signature.length > 500 ? '#27ae60' : '#3498db') : '#f8f9fa';
-                h += `<div style="background:${col}; color:${b?'white':'#000'}; padding:5px; text-align:center; font-size:10px;">${d}</div>`;
-            }
-            cont.innerHTML += h + `</div></div>`;
-        }
-    }
+  if (params.type === "note") {
+    nSheet.appendRow([new Date(), params.wohnung, params.text, "offen"]);
+    return ContentService.createTextOutput("OK");
+  }
+  
+  if (params.type === "done") {
+    nSheet.getRange(params.row, 4).setValue("erledigt");
+    return ContentService.createTextOutput("OK");
+  }
 
-    async function saveNote() {
-        const t = document.getElementById('n-text').value; if(!t) return;
-        document.getElementById('loading-overlay').style.display = 'flex';
-        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", wohnung: document.getElementById('n-wohnung').value, text: t}) });
-        document.getElementById('n-text').value = ""; 
-        setTimeout(load, 2000); 
-    }
+  var bSheet = ss.getSheetByName(SHEET_BUCHUNGEN);
+  var data = bSheet.getDataRange().getValues();
+  var rowIndex = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString() == params.id.toString()) { rowIndex = i + 1; break; }
+  }
+  var rowData = [params.id, params.wohnung, params.name, params.anreise, params.abreise, "", "", "", "", params.signature || ""];
+  if (rowIndex > -1) { bSheet.getRange(rowIndex, 1, 1, 10).setValues([rowData]); } else { bSheet.appendRow(rowData); }
+  return ContentService.createTextOutput("OK");
+}
 
-    const curY = new Date().getFullYear();
-    const yS = document.getElementById('year-select');
-    if (yS) {
-        for(let y=curY-1; y<=curY+2; y++) { 
-            let o=document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; yS.appendChild(o); 
-        }
+function importMoreBookings() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_BUCHUNGEN);
+  var data = sheet.getDataRange().getValues();
+  var tableIds = data.slice(1).map(function(row) { return row[0].toString(); });
+  var idsInIcal = [];
+  var u1 = "https://api.more-bookings.com/api/ical_augmented_calendar?&object_id=ag1mZXdveWllbGRtZ210ch4LEhFjdXN0b21lcl9wcm9wZXJ0eRiAgMDVyrLECgw&file=calendar.ics";
+  var u2 = "https://api.more-bookings.com/api/ical_augmented_calendar?&object_id=ag1mZXdveWllbGRtZ210ch4LEhFjdXN0b21lcl9wcm9wZXJ0eRiAgIjzz8SlCQw&file=calendar.ics";
+  processEvents(UrlFetchApp.fetch(u1).getContentText().split("BEGIN:VEVENT"), "Dümmerblick 1", sheet, tableIds, idsInIcal);
+  processEvents(UrlFetchApp.fetch(u2).getContentText().split("BEGIN:VEVENT"), "Dümmerblick 2", sheet, tableIds, idsInIcal);
+  for (var j = tableIds.length - 1; j >= 0; j--) {
+    if (idsInIcal.indexOf(tableIds[j]) === -1 && tableIds[j] !== "") { sheet.deleteRow(j + 2); }
+  }
+}
+
+function processEvents(events, wohnung, sheet, tableIds, idsInIcal) {
+  for (var i = 1; i < events.length; i++) {
+    var ev = events[i];
+    var uid = extractIcalField(ev, "UID");
+    if (!uid) continue;
+    idsInIcal.push(uid);
+    if (tableIds.indexOf(uid) === -1) {
+      var summary = extractIcalField(ev, "SUMMARY");
+      var desc = extractIcalField(ev, "DESCRIPTION");
+      var start = extractIcalField(ev, "DTSTART");
+      var end = extractIcalField(ev, "DTEND");
+      let gastName = "";
+      let nameMatch = desc.match(/Name:\s*([^\n\r]+)/i) || desc.match(/Guest:\s*([^\n\r]+)/i);
+      if (nameMatch && nameMatch[1]) { gastName = nameMatch[1].trim(); } else {
+        gastName = summary.replace("Buchung More-Bookings-Object", "").replace("Booking:", "").trim() || "Gast #" + uid.substring(uid.length - 5);
+      }
+      var d1 = start.substring(0,4) + "-" + start.substring(4,6) + "-" + start.substring(6,8);
+      var d2 = end.substring(0,4) + "-" + end.substring(4,6) + "-" + end.substring(6,8);
+      sheet.appendRow([uid, wohnung, gastName, d1, d2, "", "", "", "", ""]);
     }
-</script>
-</body>
-</html>
+  }
+}
+
+function extractIcalField(content, field) {
+  var regex = new RegExp(field + "(?:;[^:]*)?:(.*(?:\\r?\\n [^\\r\\n]*)*)", "i");
+  var match = regex.exec(content);
+  return match && match[1] ? match[1].replace(/\r?\\n/g, " ").replace(/\r?\n /g, "").trim() : "";
+}
