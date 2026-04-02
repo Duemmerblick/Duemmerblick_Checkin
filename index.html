@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v10.7</title>
+    <title>Dümmerblick Manager v10.8</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --orange: #e67e22; --light: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
+        body { font-family: sans-serif; background: var(--light); margin: 0; padding: 10px; }
         
         /* Login Overlay */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; color: white; flex-direction: column; }
-        #pass-input { width: 260px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 20px; text-align: center; font-size: 18px; color: #000; }
+        #login-overlay { position: fixed; inset: 0; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; color: white; flex-direction: column; }
+        #pass-input { width: 260px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 10px; text-align: center; font-size: 18px; }
         .btn-login { background: var(--success); color: white; width: 260px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; }
+        #login-error { color: #ff7675; font-size: 14px; margin-bottom: 10px; height: 20px; }
 
         .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding-bottom: 80px; }
         .nav-top { display: flex; gap: 5px; margin-bottom: 15px; }
-        .nav-top button { flex: 1; padding: 12px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 11px; }
+        .nav-top button { flex: 1; padding: 12px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 11px; cursor: pointer; }
         
         .btn-blue { background: var(--secondary); }
         .btn-green { background: var(--success); }
@@ -25,29 +26,30 @@
 
         /* TIMELINE LOGIK */
         .timeline-wrapper { display: flex; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
-        .timeline-labels { width: 130px; min-width: 130px; background: #f9f9f9; border-right: 2px solid #ddd; z-index: 20; }
+        .timeline-labels { width: 140px; min-width: 140px; background: #f9f9f9; border-right: 2px solid #ddd; z-index: 20; }
         .label-cell { height: 60px; padding: 0 10px; display: flex; align-items: center; font-weight: bold; font-size: 13px; border-bottom: 1px solid #eee; }
         .timeline-scroll { flex: 1; overflow-x: auto; position: relative; }
         .timeline-grid-container { position: relative; min-width: 1395px; } 
         .grid-header { display: flex; height: 35px; background: #eee; border-bottom: 1px solid #ddd; }
-        .grid-day-label { width: 45px; min-width: 45px; text-align: center; line-height: 35px; font-size: 10px; font-weight: bold; border-right: 1px solid #ddd; }
+        .grid-day-label { width: 45px; min-width: 45px; text-align: center; line-height: 35px; font-size: 10px; border-right: 1px solid #ddd; }
         .grid-row { height: 60px; display: flex; border-bottom: 1px solid #eee; position: relative; }
         .grid-cell { width: 45px; min-width: 45px; border-right: 1px solid #f0f0f0; }
         
-        .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 6px; font-size: 10px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; z-index: 5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 6px; font-size: 10px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; z-index: 5; overflow: hidden; padding: 0 4px; }
 
-        .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-        .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #555; display: block; border-bottom: 1px solid #ddd; }
+        .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; }
+        .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; }
         input, select, textarea { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; }
         canvas { background: #fafafa; width: 100%; height: 200px; touch-action: none; border-top: 1px solid #ddd; }
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
+        #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
-    <h2 style="margin-bottom:20px;">Dümmerblick Manager</h2>
-    <input type="text" id="pass-input" placeholder="Passwort" autocorrect="off" autocapitalize="none">
+    <h2 style="margin-bottom:10px;">Dümmerblick Manager</h2>
+    <div id="login-error"></div>
+    <input type="password" id="pass-input" placeholder="Passwort">
     <button onclick="handleLogin()" class="btn-login">ANMELDEN</button>
 </div>
 
@@ -64,7 +66,7 @@
     <div id="view-visual" class="content-view">
         <div class="timeline-wrapper">
             <div class="timeline-labels">
-                <div class="label-cell" style="height:35px; background:#eee; font-size:11px;">Einheit</div>
+                <div class="label-cell" style="height:35px; background:#eee;">Einheit</div>
                 <div class="label-cell">Dümmerblick 1</div>
                 <div class="label-cell">Dümmerblick 2</div>
             </div>
@@ -87,10 +89,10 @@
     </div>
 
     <div id="view-note" class="content-view hidden">
-        <div class="field-box"><span class="field-label">Wohnung</span>
+        <div class="field-box">
             <select id="n-wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
         </div>
-        <div class="field-box"><span class="field-label">Notiz</span><textarea id="n-text" rows="5"></textarea></div>
+        <div class="field-box"><textarea id="n-text" rows="5" placeholder="Notiz..."></textarea></div>
         <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; border-radius:8px; font-weight:bold; border:none;">NOTIZ SPEICHERN</button>
     </div>
 
@@ -100,8 +102,70 @@
             <div class="field-box"><span class="field-label">Gast</span><input type="text" id="gastName" required></div>
             <div class="field-box"><span class="field-label">Wohnung</span><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div class="field-box"><span class="field-label">Anreise</span><input type="date" id="anreise"></div>
-                <div class="field-box"><span class="field-label">Abreise</span><input type="date" id="abreise"></div>
+                <div class="field-box"><input type="date" id="anreise"></div>
+                <div class="field-box"><input type="date" id="abreise"></div>
             </div>
-            <div class="field-box"><span class="field-label">Unterschrift</span><canvas id="signature-pad"></canvas></div>
-            <button type="submit" class="btn-green" style="width:100%; padding:15px; color:white
+            <div class="field-box"><canvas id="signature-pad"></canvas></div>
+            <button type="submit" class="btn-green" style="width:100%; padding:15px; color:white; border-radius:8px; font-weight:bold; border:none;">💾 SPEICHERN</button>
+            <button type="button" onclick="showView('visual')" style="width:100%; margin-top:10px; background:none; border:none; color:#777;">Abbrechen</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbztDfiqXG7W0bv7NFLeCgmGReMuQqsn6EdRiZEOVW0PZ5n3IvQq8PRhi2OUD0mtu4gF/exec"; 
+    
+    let db = [];
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    function handleLogin() {
+        const input = document.getElementById('pass-input').value.toLowerCase().trim();
+        if(input === "duemmer123") {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            load();
+        } else {
+            document.getElementById('login-error').innerText = "Passwort falsch!";
+            document.getElementById('pass-input').value = "";
+        }
+    }
+
+    function showView(v) {
+        document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
+        document.getElementById('view-' + (v === 'list' ? 'kalender' : v)).classList.remove('hidden');
+        if(v === 'visual') renderTimeline();
+        if(v === 'form') setTimeout(resizeCanvas, 150);
+    }
+
+    async function load() {
+        document.getElementById('loading-overlay').style.display = 'flex';
+        try {
+            const r = await fetch(API_URL + "?nocache=" + Date.now());
+            db = await r.json();
+            renderTimeline(); renderTable(); renderYear();
+        } catch(e) { console.error(e); }
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    function renderTimeline() {
+        const grid = document.getElementById('timeline-grid'); grid.innerHTML = '';
+        const today = new Date(); today.setHours(0,0,0,0);
+        const dayWidth = 45;
+
+        let header = '<div class="grid-header">';
+        for(let i=0; i<=30; i++) {
+            let d = new Date(today); d.setDate(today.getDate()+i);
+            header += `<div class="grid-day-label">${d.getDate()}.${d.getMonth()+1}</div>`;
+        }
+        header += '</div>';
+        grid.innerHTML += header;
+
+        ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
+            let row = `<div class="grid-row">`;
+            for(let i=0; i<=30; i++) { row += `<div class="grid-cell"></div>`; }
+            
+            db.filter(b => b.wohnung === apt).forEach(b => {
+                let s = new Date(b.anreise); let e = new Date(b.abreise);
+                let startDiff = Math.floor((s - today) / 86400
