@@ -3,22 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v11.2</title>
+    <title>Dümmerblick Manager v11.3</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --orange: #e67e22; --light: #f4f7f6; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
+        
+        /* Login Overlay */
         #login-overlay { position: fixed; inset: 0; background: var(--primary); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; color: white; }
-        #pass-input { width: 80%; max-width: 300px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; color: #000; }
-        .btn-login { background: var(--success); color: white; width: 80%; max-width: 300px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; }
+        #pass-input { width: 260px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; color: #000; }
+        .btn-login { background: var(--success); color: white; width: 260px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; }
+
         .container { width: 100%; max-width: 1200px; margin: auto; background: white; min-height: 100vh; padding-bottom: 80px; }
         .nav-top { display: flex; gap: 4px; padding: 10px; background: #fff; border-bottom: 1px solid #ddd; }
         .nav-top button { flex: 1; padding: 12px 2px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 10px; }
+        
         .btn-blue { background: var(--secondary); }
         .btn-green { background: var(--success); }
         .btn-orange { background: var(--orange); }
         .btn-gray { background: #95a5a6; }
         .hidden { display: none !important; }
-        
+
         /* Timeline */
         .timeline-wrapper { display: flex; border: 1px solid #ddd; margin: 10px; border-radius: 8px; overflow: hidden; }
         .timeline-labels { width: 130px; min-width: 130px; background: #f9f9f9; border-right: 2px solid #ddd; }
@@ -32,18 +36,15 @@
         .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 6px; font-size: 9px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; overflow: hidden; }
         
         #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        
-        /* Notiz Karten */
-        .note-card { background: #fff9f0; border-left: 4px solid var(--orange); padding: 12px; margin-bottom: 10px; border-radius: 6px; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .note-meta { font-size: 11px; color: #777; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .note-card { background: #fff9f0; border-left: 4px solid var(--orange); padding: 12px; margin-bottom: 10px; border-radius: 6px; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <h2>Dümmerblick Manager</h2>
-    <input type="text" id="pass-input" placeholder="Passwort" autocomplete="off">
-    <button onclick="handleLogin()" class="btn-login">ANMELDEN</button>
+    <input type="text" id="pass-input" placeholder="Passwort">
+    <button onclick="var p=document.getElementById('pass-input').value.toLowerCase().trim(); if(p==='duemmer123'){document.getElementById('login-overlay').style.display='none'; document.getElementById('app-content').classList.remove('hidden'); load();}else{alert('Falsch');}" class="btn-login">ANMELDEN</button>
 </div>
 
 <div id="loading-overlay"><b>Lade Daten...</b></div>
@@ -63,77 +64,65 @@
         </div>
     </div>
 
-    <div id="view-year" class="content-view hidden">
-        <div style="padding:10px; display:flex; gap:10px;"><select id="year-select" onchange="renderYear()"></select><select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
-        <div id="year-container" style="padding:10px; display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;"></div>
-    </div>
-
     <div id="view-kalender" class="content-view hidden">
         <table style="width:100%; border-collapse:collapse;"><tbody id="belegungsDaten"></tbody></table>
     </div>
 
     <div id="view-note" class="content-view hidden" style="padding:15px;">
-        <h3 style="margin:0 0 10px 0;">Neue Notiz</h3>
-        <select id="n-wohnung" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; margin-bottom:10px;"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
-        <textarea id="n-text" rows="3" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; margin-bottom:10px;" placeholder="Was ist zu tun?"></textarea>
-        <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; border-radius:8px; font-weight:bold; border:none; margin-bottom:25px;">SPEICHERN</button>
-        
-        <h3 style="margin:0 0 10px 0;">Letzte Notizen</h3>
+        <h3>Neue Notiz</h3>
+        <select id="n-wohnung" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px;"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
+        <textarea id="n-text" rows="3" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px;" placeholder="Text..."></textarea>
+        <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; font-weight:bold; border:none; border-radius:8px;">SPEICHERN</button>
+        <h3 style="margin-top:20px;">Letzte Notizen</h3>
         <div id="notiz-liste"></div>
     </div>
 
     <div id="view-form" class="content-view hidden" style="padding:15px;">
-        <div style="background:#fff; border:1px solid #ddd; border-radius:12px; padding:15px;">
-            <input type="hidden" id="f-id">
-            <input type="text" id="gastName" style="width:100%; padding:12px; border:1px solid #eee; margin-bottom:10px; border-radius:5px;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;"><input type="date" id="anreise"><input type="date" id="abreise"></div>
-            <canvas id="signature-pad" style="border:1px solid #eee; width:100%; height:180px; border-radius:8px; margin-bottom:15px; touch-action:none;"></canvas>
-            <button onclick="saveData()" class="btn-green" style="width:100%; padding:20px; color:white; border-radius:10px; font-weight:bold; border:none;">💾 SPEICHERN</button>
-            <button onclick="showView('visual')" style="width:100%; margin-top:10px; background:none; border:none; color:#999;">Abbrechen</button>
-        </div>
+        <input type="hidden" id="f-id">
+        <input type="text" id="gastName" style="width:100%; padding:12px; margin-bottom:10px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;"><input type="date" id="anreise"><input type="date" id="abreise"></div>
+        <canvas id="signature-pad" style="border:1px solid #eee; width:100%; height:200px;"></canvas>
+        <button onclick="saveData()" class="btn-green" style="width:100%; padding:15px; color:white; font-weight:bold; border:none;">💾 SPEICHERN</button>
     </div>
 </div>
 
 <script>
-    const PW = "duemmer123";
     const API = "https://script.google.com/macros/s/AKfycbztDfiqXG7W0bv7NFLeCgmGReMuQqsn6EdRiZEOVW0PZ5n3IvQq8PRhi2OUD0mtu4gF/exec";
-
     let db = []; let notes = [];
-    const canvas = document.getElementById('signature-pad'); const ctx = canvas.getContext('2d');
-    let drawing = false;
-
-    function handleLogin() {
-        if (document.getElementById('pass-input').value.toLowerCase().trim() === PW) {
-            document.getElementById('login-overlay').classList.add('hidden');
-            document.getElementById('app-content').classList.remove('hidden');
-            load();
-        }
-    }
 
     async function load() {
         document.getElementById('loading-overlay').style.display = 'flex';
         try {
             const r = await fetch(API + "?nocache=" + Date.now());
             const data = await r.json();
-            
-            // Logik-Update: Wenn das Paket kommt, entpacken
-            if (data.buchungen) {
-                db = data.buchungen;
-                notes = data.notizen || [];
-            } else {
-                db = data; 
-                notes = [];
-            }
-            
-            renderTimeline(); renderTable(); renderYear(); renderNotes();
-        } catch(e) { console.error("Ladefehler:", e); }
+            db = data.buchungen || [];
+            notes = data.notizen || [];
+            renderTimeline(); renderTable(); renderNotes();
+        } catch(e) { console.log(e); }
         document.getElementById('loading-overlay').style.display = 'none';
     }
 
     function renderNotes() {
         const cont = document.getElementById('notiz-liste');
-        if (!notes || notes.length === 0) {
-            cont.innerHTML = '<small style="color:#999;">Noch keine Notizen vorhanden.</small>';
-            return;
-        }
-        cont.innerHTML = notes.
+        cont.innerHTML = notes.length ? notes.map(n => `<div class="note-card"><b>${n.zeit} - ${n.wohnung}</b><br>${n.text}</div>`).join('') : '<small>Keine Notizen.</small>';
+    }
+
+    function showView(v) {
+        document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
+        const target = (v === 'list') ? 'view-kalender' : 'view-' + v;
+        document.getElementById(target).classList.remove('hidden');
+    }
+
+    function renderTimeline() {
+        const grid = document.getElementById('timeline-grid'); grid.innerHTML = '';
+        const today = new Date(); today.setHours(0,0,0,0);
+        let header = '<div class="grid-header">';
+        for(let i=0; i<=30; i++) { let d = new Date(today); d.setDate(today.getDate()+i); header += `<div class="day-label">${d.getDate()}.${d.getMonth()+1}</div>`; }
+        header += '</div>'; grid.innerHTML += header;
+        ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
+            let row = `<div class="grid-row">`; for(let i=0; i<=30; i++) { row += `<div class="grid-cell"></div>`; }
+            db.filter(b => b.wohnung === apt).forEach(b => {
+                let s = new Date(b.anreise); let e = new Date(b.abreise);
+                let diff = Math.floor((s - today) / 86400000); let dur = Math.ceil((e - s) / 86400000);
+                if(diff + dur >= 0 && diff <= 30) {
+                    let left = (diff * 45) +
