@@ -1,112 +1,100 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v9.0</title>
-    <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; color: white; flex-direction: column; }
-        #pass-input { width: 280px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 20px; text-align: center; font-size: 18px; color: #000; }
-        .btn-login { background: var(--success); color: white; width: 280px; padding: 20px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .nav { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
-        .nav button { flex: 1; min-width: 80px; padding: 15px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 12px; cursor: pointer; }
-        .btn-blue { background: var(--secondary); }
-        .btn-green { background: var(--success); }
-        .btn-orange { background: #e67e22; }
-        .btn-gray { background: #95a5a6; }
-        .hidden { display: none !important; }
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-        .s-done { background: #d4edda; color: #155724; }
-        .s-open { background: #fff3cd; color: #856404; }
-        .btn-storno { background: var(--danger); color: white; padding: 6px 10px; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
-        .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
-        .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #555; display: block; border-bottom: 1px solid #ddd; text-transform: uppercase; }
-        input, select { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; background: #fff; color: #000; min-height: 45px; }
-        #signature-pad { background: #fafafa; width: 100%; height: 200px; touch-action: none; border-top: 1px solid #ddd; }
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 12px 8px; border-bottom: 1px solid #eee; font-size: 14px; }
-    </style>
-</head>
-<body>
+// ==========================================
+// DÜMMERBLICK MANAGER - BACKEND v9.1 (Wohnungs-Fix)
+// ==========================================
+var SHEET_NAME = "Buchungen";
+var ICAL_URL = "https://api.more-bookings.com/api/ical_augmented_calendar?&object_id=ag1mZXdveWllbGRtZ210ch4LEhFjdXN0b21lcl9wcm9wZXJ0eRiAgMDVyrLECgw&file=calendar.ics";
 
-<div id="login-overlay">
-    <h2 style="margin-bottom:20px;">Dümmerblick Manager</h2>
-    <input type="text" id="pass-input" placeholder="Passwort" autocorrect="off" autocapitalize="none">
-    <button onclick="handleLogin()" class="btn-login">ANMELDEN</button>
-</div>
+function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  var data = sheet.getDataRange().getValues();
+  var result = [];
+  for (var i = 1; i < data.length; i++) {
+    if(!data[i][0]) continue;
+    result.push({
+      id: data[i][0], wohnung: data[i][1], name: data[i][2],
+      anreise: Utilities.formatDate(new Date(data[i][3]), "GMT+1", "yyyy-MM-dd"),
+      abreise: Utilities.formatDate(new Date(data[i][4]), "GMT+1", "yyyy-MM-dd"),
+      anschrift: data[i][5], telefon: data[i][6], email: data[i][7], ausweis: data[i][8], signature: data[i][9]
+    });
+  }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
 
-<div id="loading-overlay">Daten werden geladen...</div>
+function doPost(e) {
+  var params = JSON.parse(e.postData.contents);
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  var data = sheet.getDataRange().getValues();
+  var id = params.id;
+  var rowIndex = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString() == id.toString()) { rowIndex = i + 1; break; }
+  }
+  if (params.delete === true) {
+    if (rowIndex > -1) { sheet.deleteRow(rowIndex); return ContentService.createTextOutput("Gelöscht"); }
+    return ContentService.createTextOutput("Nicht gefunden");
+  }
+  var rowData = [id, params.wohnung, params.name, params.anreise, params.abreise, params.anschrift || "", params.telefon || "", params.email || "", params.ausweis || "", params.signature || ""];
+  if (rowIndex > -1) { sheet.getRange(rowIndex, 1, 1, 10).setValues([rowData]); } else { sheet.appendRow(rowData); }
+  return ContentService.createTextOutput("Erfolg");
+}
 
-<div class="container hidden" id="app-content">
-    <div class="nav">
-        <button class="btn-blue" onclick="showView('visual')">📊 30 Tage</button>
-        <button class="btn-orange" onclick="showView('year')">🗓️ Jahr</button>
-        <button class="btn-green" onclick="showView('list')">📋 Liste</button>
-        <button class="btn-gray" onclick="showView('form')">➕ NEU</button>
-    </div>
+function importMoreBookings() {
+  var response = UrlFetchApp.fetch(ICAL_URL);
+  var icalContent = response.getContentText();
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  var data = sheet.getDataRange().getValues();
+  var existingIds = data.map(function(row) { return row[0].toString(); });
+  var events = icalContent.split("BEGIN:VEVENT");
+  
+  for (var i = 1; i < events.length; i++) {
+    var ev = events[i];
+    var uid = extractIcalField(ev, "UID");
+    if (!uid) continue;
 
-    <div id="view-visual" class="content-view">
-        <div id="timeline" style="overflow-x:auto;"></div>
-    </div>
+    var summary = extractIcalField(ev, "SUMMARY");
+    var description = extractIcalField(ev, "DESCRIPTION");
+    var startStr = extractIcalField(ev, "DTSTART");
+    var endStr = extractIcalField(ev, "DTEND");
 
-    <div id="view-year" class="content-view hidden">
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <select id="year-select" onchange="renderYear()"></select>
-            <select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
-        </div>
-        <div id="year-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:10px;"></div>
-    </div>
-
-    <div id="view-kalender" class="content-view hidden">
-        <table>
-            <thead><tr style="text-align:left; font-size:12px;"><th>Gast / Haus</th><th>Datum</th><th>Status</th><th>Aktion</th></tr></thead>
-            <tbody id="belegungsDaten"></tbody>
-        </table>
-    </div>
-
-    <div id="view-form" class="content-view hidden">
-        <form id="checkinForm">
-            <input type="hidden" id="f-id">
-            <div class="field-box"><span class="field-label">Wohnung</span><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
-            <div class="field-box"><span class="field-label">Gast Name</span><input type="text" id="gastName" required></div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <div class="field-box"><span class="field-label">Anreise</span><input type="date" id="anreise" required></div>
-                <div class="field-box"><span class="field-label">Abreise</span><input type="date" id="abreise" required></div>
-            </div>
-            <div class="field-box"><span class="field-label">E-Mail Adresse</span><input type="email" id="email"></div>
-            <div class="field-box"><span class="field-label">Telefonnummer</span><input type="tel" id="telefon"></div>
-            <div class="field-box"><span class="field-label">Ausweisnummer</span><input type="text" id="ausweis"></div>
-            <div class="field-box"><span class="field-label">Anschrift</span><input type="text" id="anschrift"></div>
-            <div class="field-box"><span class="field-label">Unterschrift</span><canvas id="signature-pad"></canvas></div>
-            <button type="submit" class="btn-green" style="width:100%; height:60px; font-size:18px;">💾 SPEICHERN & CHECK-IN</button>
-        </form>
-    </div>
-</div>
-
-<script>
-    const MY_PASSWORD = "duemmer123"; 
-    const API_URL = "https://script.google.com/macros/s/AKfycbwmTGnzW0mS0HKMOZTQyTy68-VOlhNdJGjwU05pCg8tJ3ZVDA0cVZml1e-rDCrCF5R9/exec";
-    
-    let db = [];
-    const canvas = document.getElementById('signature-pad');
-    const ctx = canvas.getContext('2d');
-    let drawing = false;
-
-    function handleLogin() {
-        const val = document.getElementById('pass-input').value.toLowerCase().trim();
-        if(val === MY_PASSWORD) {
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('app-content').classList.remove('hidden');
-            load();
-        }
+    // VERSTÄRKTE WOHNUNGSERKENNUNG
+    var fullText = (summary + " " + description).toUpperCase();
+    var wohnung = "Dümmerblick 1"; 
+    // Wir suchen nach " II" (mit Leerzeichen davor) oder " BLICK II"
+    if (fullText.includes(" II") || fullText.includes("BLICK II") || fullText.includes("WOHNUNG II") || fullText.includes("UNIT II")) {
+      wohnung = "Dümmerblick 2";
     }
 
-    function showView(v) {
-        document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
-        if(v === 'visual') { document.getElementById('view-visual').classList.remove('hidden'); renderTimeline(); }
-        if(v === 'year') { document.getElementById('view-year').classList.remove('hidden'); renderYear(); }
-        if(v
+    // Namens-Extraktion
+    var gastName = summary.replace(/Dümmerblick\s+[iI]+/gi, "").replace("Belegung:", "").replace("Booking:", "").trim();
+    if (gastName.toLowerCase().includes("booking.com") || /^\d+$/.test(gastName)) {
+      var nameMatch = description.match(/Name:\s*([^\n\r]+)/i) || description.match(/Guest:\s*([^\n\r]+)/i);
+      if (nameMatch && nameMatch[1]) { gastName = nameMatch[1].trim(); }
+    }
+    if (gastName === "" || /^\d+$/.test(gastName)) gastName = "Booking Gast";
+
+    var anreise = startStr.substring(0,4) + "-" + startStr.substring(4,6) + "-" + startStr.substring(6,8);
+    var abreise = endStr.substring(0,4) + "-" + endStr.substring(4,6) + "-" + endStr.substring(6,8);
+
+    var idx = existingIds.indexOf(uid);
+    if (idx === -1) {
+      sheet.appendRow([uid, wohnung, gastName, anreise, abreise, "", "", "", "", ""]);
+      existingIds.push(uid);
+    } else {
+      var currentRow = idx + 1;
+      // Falls die Wohnung in der Tabelle falsch ist (Dümmerblick 1 statt 2), korrigieren wir das hier mit!
+      sheet.getRange(currentRow, 2).setValue(wohnung);
+      
+      var currentName = data[idx][2].toString();
+      if (currentName.toLowerCase().includes("booking") && !gastName.toLowerCase().includes("booking")) {
+        sheet.getRange(currentRow, 3).setValue(gastName);
+      }
+    }
+  }
+}
+
+function extractIcalField(content, field) {
+  var regex = new RegExp(field + "(?:;[^:]*)?:(.*Internal(?:\\r?\\n [^\\r\\n]*)*)", "i"); 
+  // Kleine Korrektur am Regex für robustere Felder
+  var match = content.match(new RegExp(field + ".*:(.*)"));
+  return match ? match[1].trim() : "";
+}
