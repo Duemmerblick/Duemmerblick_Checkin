@@ -3,281 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v10</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Dümmerblick Manager v10.1</title>
     <style>
-        .timeline-grid { display: grid; grid-template-columns: 120px repeat(30, 80px); }
-        .hidden { display: none; }
-        canvas { border: 1px solid #ccc; width: 100%; height: 200px; touch-action: none; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --orange: #e67e22; --light: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
+        
+        /* Login */
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; color: white; flex-direction: column; }
+        #pass-input { width: 280px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 20px; text-align: center; font-size: 18px; color: #000; }
+        .btn-login { background: var(--success); color: white; width: 280px; padding: 20px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; }
+        
+        .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding-bottom: 80px; }
+        .nav-top { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .nav-top button { flex: 1; min-width: 80px; padding: 15px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 12px; cursor: pointer; }
+        
+        .btn-blue { background: var(--secondary); }
+        .btn-green { background: var(--success); }
+        .btn-orange { background: var(--orange); }
+        .btn-gray { background: #95a5a6; }
+        
+        .hidden { display: none !important; }
+        
+        /* Formulare */
+        .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
+        .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #555; display: block; border-bottom: 1px solid #ddd; text-transform: uppercase; }
+        input, select, textarea { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; background: #fff; color: #000; }
+        
+        canvas { background: #fafafa; width: 100%; height: 200px; touch-action: none; border-top: 1px solid #ddd; }
+        
+        /* Tabelle & Timeline */
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 12px 8px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+        .s-done { background: #d4edda; color: #155724; }
+        .s-open { background: #fff3cd; color: #856404; }
+
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
     </style>
 </head>
-<body class="bg-gray-100 pb-20">
+<body>
 
-    <header class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
-        <h1 class="font-bold text-lg">Dümmerblick Manager</h1>
-        <button onclick="fetchData()" class="bg-blue-500 p-2 rounded"><i class="fas fa-sync"></i></button>
-    </header>
+<div id="login-overlay">
+    <h2 style="margin-bottom:20px;">Dümmerblick Manager</h2>
+    <input type="text" id="pass-input" placeholder="Passwort" autocorrect="off" autocapitalize="none">
+    <button onclick="handleLogin()" class="btn-login">ANMELDEN</button>
+</div>
 
-    <div id="view-visual" class="content-view p-2 overflow-x-auto">
-        <div id="timeline-container" class="bg-white rounded shadow p-2"></div>
+<div id="loading-overlay">Daten werden geladen...</div>
+
+<div class="container hidden" id="app-content">
+    <div class="nav-top">
+        <button class="btn-blue" onclick="showView('visual')">📊 30 Tage</button>
+        <button class="btn-orange" onclick="showView('year')">🗓️ Jahr</button>
+        <button class="btn-green" onclick="showView('list')">📋 Liste</button>
+        <button class="btn-gray" onclick="showView('note')">📝 NOTIZ</button>
     </div>
 
-    <div id="view-year" class="content-view hidden p-2">
-        <div id="year-container" class="space-y-4"></div>
+    <div id="view-visual" class="content-view">
+        <div id="timeline" style="overflow-x:auto;"></div>
     </div>
 
-    <div id="view-kalender" class="content-view hidden p-2">
-        <div id="list-container" class="space-y-2"></div>
-    </div>
-
-    <div id="view-form" class="content-view hidden p-4">
-        <div class="bg-white p-4 rounded shadow-lg">
-            <h2 class="text-xl font-bold mb-4">Check-In / Bearbeiten</h2>
-            <form id="checkinForm" class="space-y-3">
-                <input type="hidden" id="f-id">
-                <div><label class="block text-sm">Gast-Name</label><input type="text" id="f-name" class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm">Wohnung</label>
-                    <select id="f-wohnung" class="w-full border p-2 rounded">
-                        <option>Dümmerblick 1</option>
-                        <option>Dümmerblick 2</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="block text-sm">Anreise</label><input type="date" id="f-anreise" class="w-full border p-2 rounded"></div>
-                    <div><label class="block text-sm">Abreise</label><input type="date" id="f-abreise" class="w-full border p-2 rounded"></div>
-                </div>
-                <div><label class="block text-sm">Anschrift</label><textarea id="f-anschrift" class="w-full border p-2 rounded"></textarea></div>
-                <div><label class="block text-sm">Telefon</label><input type="text" id="f-telefon" class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm">E-Mail</label><input type="text" id="f-email" class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm">Ausweis-Nr.</label><input type="text" id="f-ausweis" class="w-full border p-2 rounded"></div>
-                
-                <div>
-                    <label class="block text-sm font-bold">Unterschrift Gast</label>
-                    <canvas id="sig-canvas"></canvas>
-                    <button type="button" onclick="clearSig()" class="text-xs text-red-500 mt-1">Löschen</button>
-                    <input type="hidden" id="f-signature">
-                </div>
-
-                <div class="flex gap-2 pt-4">
-                    <button type="button" onclick="saveData()" class="flex-1 bg-green-600 text-white p-3 rounded font-bold">Speichern</button>
-                    <button type="button" onclick="showView('list')" class="flex-1 bg-gray-400 text-white p-3 rounded">Abbrechen</button>
-                </div>
-                <button type="button" onclick="deleteEntry()" class="w-full text-red-500 text-sm mt-4">Buchung löschen</button>
-            </form>
+    <div id="view-year" class="content-view hidden">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <select id="year-select" onchange="renderYear()"></select>
+            <select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
         </div>
+        <div id="year-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:10px;"></div>
     </div>
 
-    <div id="view-note" class="content-view hidden p-4">
-        <div class="bg-white p-4 rounded shadow-lg">
-            <h2 class="text-xl font-bold mb-4"><i class="fas fa-sticky-note mr-2"></i>Neue Notiz / Mangel</h2>
-            <form id="noteForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm">Betroffene Wohnung</label>
-                    <select id="n-wohnung" class="w-full border p-3 rounded text-lg">
-                        <option>Dümmerblick 1</option>
-                        <option>Dümmerblick 2</option>
-                        <option>Allgemein / Außen</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm">Was ist zu tun?</label>
-                    <textarea id="n-text" rows="5" class="w-full border p-3 rounded text-lg" placeholder="z.B. Glühbirne Bad defekt, WLAN Router hakt..."></textarea>
-                </div>
-                <button type="button" onclick="saveNote()" class="w-full bg-orange-500 text-white p-4 rounded-xl font-bold text-lg shadow-lg">
-                    Notiz in Tabelle speichern
-                </button>
-                <button type="button" onclick="showView('visual')" class="w-full text-gray-500 p-2">Abbrechen</button>
-            </form>
+    <div id="view-kalender" class="content-view hidden">
+        <table>
+            <thead><tr style="text-align:left; font-size:12px;"><th>Gast / Haus</th><th>Datum</th><th>Status</th></tr></thead>
+            <tbody id="belegungsDaten"></tbody>
+        </table>
+    </div>
+
+    <div id="view-note" class="content-view hidden">
+        <h3 style="margin-top:0;">Neue Notiz / Mangel</h3>
+        <div class="field-box"><span class="field-label">Wohnung</span>
+            <select id="n-wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
         </div>
+        <div class="field-box"><span class="field-label">Beschreibung</span>
+            <textarea id="n-text" rows="5" placeholder="Was ist zu tun?"></textarea>
+        </div>
+        <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:20px; border-radius:10px; color:white; font-weight:bold; border:none; font-size:16px;">NOTIZ SPEICHERN</button>
     </div>
 
-    <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around p-2 shadow-inner z-50">
-        <button onclick="showView('visual')" class="flex flex-col items-center text-blue-600"><i class="fas fa-calendar-day text-xl"></i><span class="text-xs">30 Tage</span></button>
-        <button onclick="showView('year')" class="flex flex-col items-center text-gray-500"><i class="fas fa-calendar-alt text-xl"></i><span class="text-xs">Jahr</span></button>
-        <button onclick="showView('list')" class="flex flex-col items-center text-gray-500"><i class="fas fa-list text-xl"></i><span class="text-xs">Liste</span></button>
-        <button onclick="showView('note')" class="flex flex-col items-center text-orange-500"><i class="fas fa-plus-circle text-2xl"></i><span class="text-xs">Notiz</span></button>
-    </nav>
+    <div id="view-form" class="content-view hidden">
+        <form id="checkinForm">
+            <input type="hidden" id="f-id">
+            <div class="field-box"><span class="field-label">Gast Name</span><input type="text" id="gastName" required></div>
+            <div class="field-box"><span class="field-label">Wohnung</span><select id="wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div class="field-box"><span class="field-label">Anreise</span><input type="date" id="anreise"></div>
+                <div class="field-box"><span class="field-label">Abreise</span><input type="date" id="abreise"></div>
+            </div>
+            <div class="field-box"><span class="field-label">Anschrift</span><input type="text" id="anschrift"></div>
+            <div class="field-box"><span class="field-label">Unterschrift</span><canvas id="signature-pad"></canvas></div>
+            <button type="submit" class="btn-green" style="width:100%; height:60px; font-size:18px; color:white; border:none; border-radius:10px; font-weight:bold;">💾 SPEICHERN</button>
+        </form>
+    </div>
+</div>
 
-    <script>
-        const WEB_APP_URL = "HIER_DEINE_URL_EINTRAGEN"; // <--- DEINE URL
-        let G_DATA = [];
+<script>
+    const MY_PASSWORD = "duemmer123"; 
+    const API_URL = "HIER_DEINE_SCRIPT_URL_EINTRAGEN"; 
+    
+    let db = [];
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
 
-        async function fetchData() {
-            const resp = await fetch(WEB_APP_URL);
-            G_DATA = await resp.json();
-            renderTimeline();
-            renderYear();
-            renderTable();
+    function handleLogin() {
+        if(document.getElementById('pass-input').value.toLowerCase().trim() === MY_PASSWORD) {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('app-content').classList.remove('hidden');
+            load();
         }
+    }
 
-        function showView(v) {
-            document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('text-blue-600', 'text-gray-500'));
-            
-            if(v === 'form') {
-                document.getElementById('view-form').classList.remove('hidden');
-                setTimeout(resizeCanvas, 150);
-            } else if(v === 'note') {
-                document.getElementById('noteForm').reset();
-                document.getElementById('view-note').classList.remove('hidden');
-            } else {
-                document.getElementById('view-' + v).classList.remove('hidden');
-            }
-        }
+    function showView(v) {
+        document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
+        document.getElementById('view-' + (v === 'list' ? 'kalender' : v)).classList.remove('hidden');
+        if(v === 'visual') renderTimeline();
+        if(v === 'form') setTimeout(resizeCanvas, 150);
+    }
 
-        async function saveNote() {
-            const wohnung = document.getElementById('n-wohnung').value;
-            const text = document.getElementById('n-text').value;
-            if(!text) return alert("Bitte Text eingeben");
+    async function load() {
+        document.getElementById('loading-overlay').style.display = 'flex';
+        try {
+            const r = await fetch(API_URL + "?nocache=" + Date.now());
+            db = await r.json();
+            renderTimeline(); renderTable(); renderYear();
+        } catch(e) { console.error(e); }
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
 
-            const btn = event.target;
-            btn.disabled = true; btn.innerText = "Speichert...";
+    function renderTable() {
+        const tbody = document.getElementById('belegungsDaten'); tbody.innerHTML = '';
+        db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
+            const isDone = b.signature && b.signature.length > 500;
+            let tr = document.createElement('tr');
+            tr.onclick = () => editEntry(b.id);
+            tr.innerHTML = `<td><b>${b.name}</b><br><small>${b.wohnung}</small></td><td>${b.anreise}</td><td><span class="status-badge ${isDone ? 's-done' : 's-open'}">${isDone ? 'OK' : 'OFFEN'}</span></td>`;
+            tbody.appendChild(tr);
+        });
+    }
 
-            await fetch(WEB_APP_URL, {
-                method: "POST",
-                body: JSON.stringify({ type: "note", wohnung, text })
-            });
+    function editEntry(id) {
+        const b = db.find(x => x.id == id);
+        if(!b) return;
+        document.getElementById('f-id').value = b.id;
+        document.getElementById('gastName').value = b.name;
+        document.getElementById('wohnung').value = b.wohnung;
+        document.getElementById('anreise').value = b.anreise;
+        document.getElementById('abreise').value = b.abreise;
+        document.getElementById('anschrift').value = b.anschrift || "";
+        showView('form');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(b.signature) { let img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = b.signature; }
+    }
 
-            alert("Notiz wurde im Tabellenblatt 'Notizen' gespeichert!");
-            showView('visual');
-            btn.disabled = false; btn.innerText = "Notiz in Tabelle speichern";
-        }
+    async function saveNote() {
+        const text = document.getElementById('n-text').value;
+        if(!text) return alert("Bitte Text eingeben");
+        document.getElementById('loading-overlay').style.display = 'flex';
+        await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", wohnung: document.getElementById('n-wohnung').value, text: text}) });
+        alert("Notiz gespeichert!");
+        document.getElementById('n-text').value = "";
+        showView('visual');
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
 
-        function renderTimeline() {
-            const container = document.getElementById('timeline-container');
-            const today = new Date();
-            let html = '<div class="timeline-grid font-bold border-b pb-2"><div>Einheit</div>';
-            
-            for(let i=0; i<30; i++) {
-                let d = new Date(); d.setDate(today.getDate() + i);
-                let isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                html += `<div class="text-center ${isWeekend ? 'bg-gray-100' : ''}">${d.getDate()}.${d.getMonth()+1}</div>`;
-            }
-            html += '</div>';
+    document.getElementById('checkinForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const entry = { id: document.getElementById('f-id').value, name: document.getElementById('gastName').value, wohnung: document.getElementById('wohnung').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, signature: canvas.toDataURL() };
+        document.getElementById('loading-overlay').style.display = 'flex';
+        await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
+        setTimeout(() => { load(); showView('visual'); }, 1500);
+    };
 
-            ["Dümmerblick 1", "Dümmerblick 2"].forEach(room => {
-                html += `<div class="timeline-grid border-b py-4"><div class="font-bold">${room}</div>`;
-                for(let i=0; i<30; i++) {
-                    let d = new Date(); d.setDate(today.getDate() + i);
-                    d.setHours(0,0,0,0);
-                    let booking = G_DATA.find(b => b.wohnung === room && new Date(b.anreise) <= d && new Date(b.abreise) > d);
-                    
-                    if(booking) {
-                        const isStart = new Date(booking.anreise).getTime() === d.getTime();
-                        html += `<div onclick="editEntry('${booking.id}')" class="h-8 bg-blue-500 text-white text-[10px] truncate p-1 cursor-pointer ${isStart ? 'rounded-l-lg' : ''}">${isStart ? booking.name : ''}</div>`;
-                    } else {
-                        html += `<div class="h-8 bg-gray-50 border-r"></div>`;
-                    }
+    // --- TIMELINE & YEAR LOGIC (v8.2 Standard) ---
+    function renderTimeline() {
+        const cont = document.getElementById('timeline'); cont.innerHTML = '';
+        const today = new Date(); today.setHours(0,0,0,0);
+        const dayWidth = 45; const navWidth = 120;
+        let h = `<div style="display:grid; grid-template-columns:${navWidth}px repeat(31,${dayWidth}px); background:#eee; font-weight:bold;"><div style="padding:10px;">Einheit</div>`;
+        for(let i=0; i<=30; i++) { let d = new Date(today); d.setDate(today.getDate()+i); h += `<div style="text-align:center; padding:5px; font-size:10px;">${d.getDate()}.${d.getMonth()+1}</div>`; }
+        h += '</div>';
+        ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
+            h += `<div style="display:grid; grid-template-columns:${navWidth}px repeat(31,${dayWidth}px); position:relative; border-bottom:1px solid #eee; height:50px;"><div style="padding:15px 10px; background:#f9f9f9; font-weight:bold;">${apt}</div>`;
+            db.filter(b => b.wohnung === apt).forEach(b => {
+                let s = new Date(b.anreise); let e = new Date(b.abreise);
+                let startDay = Math.floor((s - today) / 86400000);
+                let duration = Math.ceil((e - s) / 86400000);
+                if(startDay + duration >= 0 && startDay <= 30) {
+                    let left = navWidth + (startDay * dayWidth) + (dayWidth/2);
+                    let width = (duration * dayWidth);
+                    h += `<div onclick="editEntry('${b.id}')" style="position:absolute; left:${left}px; width:${width-4}px; height:30px; top:10px; background:${b.signature ? '#27ae60':'#3498db'}; color:white; border-radius:6px; font-size:9px; text-align:center; line-height:30px; cursor:pointer; overflow:hidden;">${b.name}</div>`;
                 }
-                html += '</div>';
             });
-            container.innerHTML = html;
-        }
+            h += '</div>';
+        });
+        cont.innerHTML = h;
+    }
 
-        function renderTable() {
-            const container = document.getElementById('list-container');
-            const sorted = [...G_DATA].sort((a,b) => new Date(a.anreise) - new Date(b.anreise));
-            container.innerHTML = sorted.map(b => `
-                <div onclick="editEntry('${b.id}')" class="bg-white p-3 rounded shadow flex justify-between items-center border-l-4 ${b.wohnung.includes('2') ? 'border-orange-400' : 'border-blue-400'}">
-                    <div>
-                        <div class="font-bold">${b.name}</div>
-                        <div class="text-xs text-gray-500">${new Date(b.anreise).toLocaleDateString()} - ${new Date(b.abreise).toLocaleDateString()}</div>
-                    </div>
-                    <div class="text-xs font-mono bg-gray-100 p-1 rounded">${b.wohnung}</div>
-                </div>
-            `).join('');
-        }
-
-        function renderYear() {
-            const container = document.getElementById('year-container');
-            container.innerHTML = '';
-            for(let m=0; m<12; m++) {
-                let d = new Date(new Date().getFullYear(), m, 1);
-                let html = `<div class="bg-white p-2 rounded shadow"><h3 class="font-bold border-b mb-2">${d.toLocaleString('de-de', {month:'long'})}</h3><div class="grid grid-cols-7 gap-1">`;
-                while(d.getMonth() === m) {
-                    let dateStr = d.toISOString().split('T')[0];
-                    let b1 = G_DATA.find(b => b.wohnung === "Dümmerblick 1" && b.anreise <= dateStr && b.abreise > dateStr);
-                    let b2 = G_DATA.find(b => b.wohnung === "Dümmerblick 2" && b.anreise <= dateStr && b.abreise > dateStr);
-                    let color = 'bg-gray-50';
-                    if(b1 && b2) color = 'bg-purple-500 text-white';
-                    else if(b1) color = 'bg-blue-400 text-white';
-                    else if(b2) color = 'bg-orange-400 text-white';
-                    html += `<div class="text-[10px] p-1 text-center ${color} rounded">${d.getDate()}</div>`;
-                    d.setDate(d.getDate() + 1);
-                }
-                container.innerHTML += html + '</div></div>';
+    function renderYear() {
+        const year = parseInt(document.getElementById('year-select').value);
+        const apt = document.getElementById('apt-filter').value;
+        const cont = document.getElementById('year-container'); cont.innerHTML = '';
+        for(let m=0; m<12; m++) {
+            let mName = new Date(year, m).toLocaleString('de-DE', {month:'long'});
+            let html = `<div style="background:#fff; padding:10px; border-radius:8px; shadow:sm;"><div style="text-align:center; font-weight:bold; background:var(--primary); color:white; padding:5px; border-radius:4px; margin-bottom:5px;">${mName}</div><div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px;">`;
+            let days = new Date(year, m+1, 0).getDate();
+            for(let d=1; d<=days; d++) {
+                let ds = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                let b = db.find(x => x.wohnung === apt && ds >= x.anreise && ds < x.abreise);
+                let color = b ? (b.signature ? '#27ae60' : '#3498db') : '#f8f9fa';
+                html += `<div style="background:${color}; color:${b?'white':'#000'}; padding:5px; text-align:center; font-size:10px; border-radius:2px;">${d}</div>`;
             }
+            cont.innerHTML += html + `</div></div>`;
         }
+    }
 
-        function editEntry(id) {
-            const b = G_DATA.find(x => x.id === id);
-            if(!b) return;
-            document.getElementById('f-id').value = b.id;
-            document.getElementById('f-name').value = b.name;
-            document.getElementById('f-wohnung').value = b.wohnung;
-            document.getElementById('f-anreise').value = b.anreise;
-            document.getElementById('f-abreise').value = b.abreise;
-            document.getElementById('f-anschrift').value = b.anschrift || "";
-            document.getElementById('f-telefon').value = b.telefon || "";
-            document.getElementById('f-email').value = b.email || "";
-            document.getElementById('f-ausweis').value = b.ausweis || "";
-            document.getElementById('f-signature').value = b.signature || "";
-            
-            const canvas = document.getElementById('sig-canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            if(b.signature) {
-                const img = new Image();
-                img.onload = () => ctx.drawImage(img, 0, 0);
-                img.src = b.signature;
-            }
-            showView('form');
-        }
+    const curY = new Date().getFullYear(); const yS = document.getElementById('year-select');
+    for(let y=curY-1; y<=curY+2; y++) { let o=document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; yS.appendChild(o); }
 
-        async function saveData() {
-            const data = {
-                id: document.getElementById('f-id').value,
-                name: document.getElementById('f-name').value,
-                wohnung: document.getElementById('f-wohnung').value,
-                anreise: document.getElementById('f-anreise').value,
-                abreise: document.getElementById('f-abreise').value,
-                anschrift: document.getElementById('f-anschrift').value,
-                telefon: document.getElementById('f-telefon').value,
-                email: document.getElementById('f-email').value,
-                ausweis: document.getElementById('f-ausweis').value,
-                signature: document.getElementById('sig-canvas').toDataURL()
-            };
-            await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify(data) });
-            fetchData();
-            showView('visual');
-        }
-
-        async function deleteEntry() {
-            if(!confirm("Buchung wirklich löschen?")) return;
-            await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ id: document.getElementById('f-id').value, delete: true }) });
-            fetchData();
-            showView('visual');
-        }
-
-        // Signature Logic
-        const canvas = document.getElementById('sig-canvas');
-        const ctx = canvas.getContext('2d');
-        let drawing = false;
-
-        function resizeCanvas() {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            ctx.scale(ratio, ratio);
-        }
-
-        canvas.addEventListener('touchstart', (e) => { drawing = true; const t = e.touches[0]; ctx.beginPath(); ctx.moveTo(t.pageX - canvas.offsetLeft, t.pageY - canvas.offsetTop); e.preventDefault(); });
-        canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const t = e.touches[0]; ctx.lineTo(t.pageX - canvas.offsetLeft, t.pageY - canvas.offsetTop); ctx.stroke(); e.preventDefault(); });
-        canvas.addEventListener('touchend', () => drawing = false);
-        function clearSig() { ctx.clearRect(0,0,canvas.width,canvas.height); }
-
-        window.onload = fetchData;
-    </script>
+    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; }
+    const getP = (e) => { const r = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; return { x: cX - r.left, y: cY - r.top }; };
+    canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const p = getP(e); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+    canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const p = getP(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); });
+    window.addEventListener('touchend', () => drawing = false);
+</script>
 </body>
 </html>
