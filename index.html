@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v7.5</title>
+    <title>Dümmerblick Manager v7.6</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
+        
+        /* Login */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; color: white; flex-direction: column; }
         #pass-input { width: 280px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 20px; text-align: center; font-size: 18px; color: #000; }
         .btn-login { background: var(--success); color: white; width: 280px; padding: 20px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; }
+
         .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .nav { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
         .nav button { flex: 1; min-width: 80px; padding: 15px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 12px; cursor: pointer; }
@@ -17,16 +20,27 @@
         .btn-green { background: var(--success); }
         .btn-orange { background: #e67e22; }
         .btn-gray { background: #95a5a6; }
+
         .hidden { display: none !important; }
+        
+        /* Status Badges */
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; white-space: nowrap; }
+        .s-done { background: #d4edda; color: #155724; }
+        .s-open { background: #fff3cd; color: #856404; }
+        .btn-storno { background: var(--danger); color: white; padding: 6px 10px; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
+
+        /* Eingabefelder */
         .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
         .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #555; display: block; border-bottom: 1px solid #ddd; text-transform: uppercase; }
         input, select { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; background: #fff; color: #000; }
-        .year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
-        .month-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+
+        /* Listen-Ansicht Optimierung */
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #f8f9fa; padding: 10px; text-align: left; border-bottom: 2px solid #eee; }
+        td { padding: 12px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+
         #signature-pad { background: #fafafa; width: 100%; height: 200px; touch-action: none; border-top: 1px solid #ddd; }
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        td { padding: 12px 8px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -56,12 +70,12 @@
             <select id="year-select" onchange="renderYear()"></select>
             <select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select>
         </div>
-        <div id="year-container" class="year-grid"></div>
+        <div id="year-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:10px;"></div>
     </div>
 
     <div id="view-kalender" class="content-view hidden">
         <table id="g-table">
-            <thead><tr style="text-align:left; background:#eee;"><th>Gast</th><th>Haus</th><th>Anreise</th></tr></thead>
+            <thead><tr><th>Gast / Haus</th><th>Datum</th><th>Status</th><th>Aktion</th></tr></thead>
             <tbody id="belegungsDaten"></tbody>
         </table>
     </div>
@@ -75,15 +89,12 @@
                 <div class="field-box"><span class="field-label">ANREISE</span><input type="date" id="anreise" required></div>
                 <div class="field-box"><span class="field-label">ABREISE</span><input type="date" id="abreise" required></div>
             </div>
-            
-            <div class="field-box"><span class="field-label">E-MAIL ADRESSE</span><input type="email" id="email" placeholder="gast@beispiel.de"></div>
-            <div class="field-box"><span class="field-label">TELEFONNUMMER</span><input type="tel" id="telefon" placeholder="+49 123 45678"></div>
-            <div class="field-box"><span class="field-label">AUSWEISNUMMER / PASS</span><input type="text" id="ausweis" placeholder="Nr. laut Ausweis"></div>
-            
-            <div class="field-box"><span class="field-label">ANSCHRIFT</span><input type="text" id="anschrift" placeholder="Straße, PLZ, Ort"></div>
+            <div class="field-box"><span class="field-label">E-MAIL ADRESSE</span><input type="email" id="email"></div>
+            <div class="field-box"><span class="field-label">TELEFONNUMMER</span><input type="tel" id="telefon"></div>
+            <div class="field-box"><span class="field-label">AUSWEISNUMMER</span><input type="text" id="ausweis"></div>
+            <div class="field-box"><span class="field-label">ANSCHRIFT</span><input type="text" id="anschrift"></div>
             <div class="field-box"><span class="field-label">UNTERSCHRIFT</span><canvas id="signature-pad"></canvas></div>
-            
-            <button type="submit" class="btn-green" style="width:100%; height:60px; font-size:18px; margin-bottom:20px;">💾 SPEICHERN & SENDEN</button>
+            <button type="submit" class="btn-green" style="width:100%; height:60px;">💾 SPEICHERN</button>
         </form>
     </div>
 </div>
@@ -127,6 +138,29 @@
             renderTimeline();
         } catch(e) { console.log(e); }
         document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('belegungsDaten'); tbody.innerHTML = '';
+        db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
+            const isDone = b.signature && b.signature.length > 500;
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td onclick="editEntry('${b.id}')"><b>${b.name || 'Booking'}</b><br><small>${b.wohnung}</small></td>
+                <td onclick="editEntry('${b.id}')" style="font-size:11px;">${b.anreise}</td>
+                <td onclick="editEntry('${b.id}')"><span class="status-badge ${isDone ? 's-done' : 's-open'}">${isDone ? 'CHECKED-IN' : 'OFFEN'}</span></td>
+                <td><button class="btn-storno" onclick="storno('${b.id}')">Storno</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function storno(id) {
+        if(confirm("Buchung wirklich stornieren?")) {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({id: id, delete: true}) });
+            setTimeout(() => { load(); showView('list'); }, 2000);
+        }
     }
 
     function renderTimeline() {
@@ -174,16 +208,6 @@
         cont.innerHTML = fullHtml;
     }
 
-    function renderTable() {
-        const tbody = document.getElementById('belegungsDaten'); tbody.innerHTML = '';
-        db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
-            let tr = document.createElement('tr');
-            tr.innerHTML = `<td><b>${b.name || 'Booking'}</b></td><td>${b.wohnung}</td><td>${b.anreise}</td>`;
-            tr.onclick = () => editEntry(b.id);
-            tbody.appendChild(tr);
-        });
-    }
-
     function editEntry(id) {
         const b = db.find(x => x.id == id);
         if(!b) return;
@@ -203,21 +227,10 @@
 
     async function save(e) {
         e.preventDefault();
-        const entry = { 
-            id: document.getElementById('f-id').value, 
-            wohnung: document.getElementById('wohnung').value, 
-            name: document.getElementById('gastName').value, 
-            anreise: document.getElementById('anreise').value, 
-            abreise: document.getElementById('abreise').value, 
-            anschrift: document.getElementById('anschrift').value,
-            email: document.getElementById('email').value,
-            telefon: document.getElementById('telefon').value,
-            ausweis: document.getElementById('ausweis').value,
-            signature: canvas.toDataURL() 
-        };
+        const entry = { id: document.getElementById('f-id').value, wohnung: document.getElementById('wohnung').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, email: document.getElementById('email').value, telefon: document.getElementById('telefon').value, ausweis: document.getElementById('ausweis').value, signature: canvas.toDataURL() };
         document.getElementById('loading-overlay').style.display = 'flex';
         await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entry) });
-        setTimeout(() => { load(); showView('visual'); }, 2000);
+        setTimeout(() => { load(); showView('list'); }, 2000);
     }
     document.getElementById('checkinForm').onsubmit = save;
 
@@ -227,12 +240,12 @@
         let o = document.createElement('option'); o.value=y; o.innerText=y; if(y===curYear) o.selected=true; ySel.appendChild(o);
     }
 
-    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#000"; }
-    function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; }
     const getPos = (e) => { const r = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; return { x: cX - r.left, y: cY - r.top }; };
     canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); e.preventDefault(); });
     canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); });
     window.addEventListener('touchend', () => drawing = false);
+    function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 </script>
 </body>
 </html>
