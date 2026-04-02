@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v8.1</title>
+    <title>Dümmerblick Manager v8.2</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
@@ -195,25 +195,53 @@
         }
     }
 
+    // TIMELINE LOGIK: ABREISE VORMITTAGS / ANREISE NACHMITTAGS
     function renderTimeline() {
         const cont = document.getElementById('timeline'); cont.innerHTML = '';
         const today = new Date(); today.setHours(0,0,0,0);
-        let h = '<div style="display:grid; grid-template-columns:140px repeat(31,45px); min-width:1530px; border-bottom:1px solid #ddd; background:#eee;"><div style="padding:10px;">Tag</div>';
+        const dayWidth = 45;
+        const navWidth = 140;
+
+        let h = `<div style="display:grid; grid-template-columns:${navWidth}px repeat(31,${dayWidth}px); min-width:${navWidth + (31 * dayWidth)}px; border-bottom:1px solid #ddd; background:#eee;"><div style="padding:10px;">Tag</div>`;
         for(let i=0; i<=30; i++) {
             let d = new Date(today); d.setDate(today.getDate()+i);
             h += `<div style="text-align:center; padding:5px; font-size:10px;">${d.getDate()}.${d.getMonth()+1}</div>`;
         }
         h += '</div>';
+
         ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
-            h += `<div style="display:grid; grid-template-columns:140px repeat(31,45px); min-width:1530px; height:50px; position:relative; border-bottom:1px solid #eee;"><div style="padding:15px 10px; font-weight:bold; background:#f9f9f9;">${apt}</div>`;
+            h += `<div style="display:grid; grid-template-columns:${navWidth}px repeat(31,${dayWidth}px); min-width:${navWidth + (31 * dayWidth)}px; height:50px; position:relative; border-bottom:1px solid #eee;"><div style="padding:15px 10px; font-weight:bold; background:#f9f9f9;">${apt}</div>`;
+            
             db.filter(b => b.wohnung === apt).forEach(b => {
-                let s = new Date(b.anreise); let e = new Date(b.abreise);
-                let dS = Math.floor((s - today) / 86400000); let dur = Math.ceil((e - s) / 86400000);
-                if(dS + dur >= 0 && dS <= 30) {
-                    let st = Math.max(0, dS); let en = Math.min(31, dS + dur);
-                    let w = (en - st) * 45;
-                    // ABSTAND AUF 10 PIXEL ERHÖHT (Links 10, Rechts 10 = 20px Gesamtlücke bei Wechsel)
-                    if(w > 5) h += `<div onclick="editEntry('${b.id}')" style="position:absolute; left:${140+(st*45)+10}px; width:${w-20}px; height:32px; top:9px; background:${b.signature && b.signature.length > 500 ? '#27ae60':'#3498db'}; color:white; border-radius:6px; padding:6px 4px; font-size:9px; z-index:10; overflow:hidden; box-shadow: 1px 2px 4px rgba(0,0,0,0.15); line-height:20px; font-weight:bold; text-align:center;">${b.name}</div>`;
+                let s = new Date(b.anreise); s.setHours(0,0,0,0);
+                let e = new Date(b.abreise); e.setHours(0,0,0,0);
+                
+                // Berechnung der Tage relativ zu heute
+                let startDay = Math.floor((s - today) / 86400000);
+                let duration = Math.ceil((e - s) / 86400000);
+                
+                if(startDay + duration >= 0 && startDay <= 30) {
+                    let st = Math.max(0, startDay);
+                    let en = Math.min(31, startDay + duration);
+                    
+                    // Positionierung: 
+                    // Anreise-Tag: Balken startet bei 50% des Tagesfeldes (Nachmittags)
+                    // Abreise-Tag: Balken endet bei 50% des Tagesfeldes (Vormittags)
+                    let leftPos = navWidth + (startDay * dayWidth) + (dayWidth / 2);
+                    let widthVal = (duration * dayWidth);
+                    
+                    // Korrektur falls der Start vor dem Sichtbereich liegt
+                    if (startDay < 0) {
+                        leftPos = navWidth;
+                        widthVal = (startDay + duration) * dayWidth + (dayWidth / 2);
+                    }
+                    
+                    // Korrektur falls das Ende nach dem Sichtbereich liegt
+                    if (startDay + duration > 31) {
+                        widthVal = (31 - startDay) * dayWidth;
+                    }
+
+                    h += `<div onclick="editEntry('${b.id}')" style="position:absolute; left:${leftPos}px; width:${widthVal - 4}px; height:32px; top:9px; background:${b.signature && b.signature.length > 500 ? '#27ae60':'#3498db'}; color:white; border-radius:6px; padding:6px 2px; font-size:9px; z-index:10; overflow:hidden; box-shadow: 1px 2px 4px rgba(0,0,0,0.15); line-height:20px; font-weight:bold; text-align:center; cursor:pointer; white-space:nowrap;">${b.name}</div>`;
                 }
             });
             h += '</div>';
