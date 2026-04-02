@@ -3,27 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v11.3</title>
+    <title>Dümmerblick Manager v11.4</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --orange: #e67e22; --light: #f4f7f6; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
-        
-        /* Login Overlay */
         #login-overlay { position: fixed; inset: 0; background: var(--primary); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; color: white; }
         #pass-input { width: 260px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; color: #000; }
         .btn-login { background: var(--success); color: white; width: 260px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; }
-
         .container { width: 100%; max-width: 1200px; margin: auto; background: white; min-height: 100vh; padding-bottom: 80px; }
         .nav-top { display: flex; gap: 4px; padding: 10px; background: #fff; border-bottom: 1px solid #ddd; }
-        .nav-top button { flex: 1; padding: 12px 2px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 10px; }
-        
+        .nav-top button { flex: 1; padding: 12px 2px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 10px; cursor: pointer; }
         .btn-blue { background: var(--secondary); }
         .btn-green { background: var(--success); }
         .btn-orange { background: var(--orange); }
         .btn-gray { background: #95a5a6; }
         .hidden { display: none !important; }
-
-        /* Timeline */
         .timeline-wrapper { display: flex; border: 1px solid #ddd; margin: 10px; border-radius: 8px; overflow: hidden; }
         .timeline-labels { width: 130px; min-width: 130px; background: #f9f9f9; border-right: 2px solid #ddd; }
         .label-cell { height: 60px; padding: 0 10px; display: flex; align-items: center; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee; }
@@ -34,9 +28,8 @@
         .grid-row { height: 60px; display: flex; border-bottom: 1px solid #eee; position: relative; }
         .grid-cell { width: 45px; min-width: 45px; border-right: 1px solid #f8f8f8; }
         .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 6px; font-size: 9px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; overflow: hidden; }
-        
         #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .note-card { background: #fff9f0; border-left: 4px solid var(--orange); padding: 12px; margin-bottom: 10px; border-radius: 6px; font-size: 14px; }
+        .note-card { background: #fff9f0; border-left: 4px solid var(--orange); padding: 12px; margin-bottom: 10px; border-radius: 6px; font-size: 14px; text-align: left; }
     </style>
 </head>
 <body>
@@ -44,7 +37,7 @@
 <div id="login-overlay">
     <h2>Dümmerblick Manager</h2>
     <input type="text" id="pass-input" placeholder="Passwort">
-    <button onclick="var p=document.getElementById('pass-input').value.toLowerCase().trim(); if(p==='duemmer123'){document.getElementById('login-overlay').style.display='none'; document.getElementById('app-content').classList.remove('hidden'); load();}else{alert('Falsch');}" class="btn-login">ANMELDEN</button>
+    <button onclick="var p=document.getElementById('pass-input').value.toLowerCase().trim(); if(p==='duemmer123'){document.getElementById('login-overlay').style.display='none'; document.getElementById('app-content').classList.remove('hidden'); load();}else{alert('Passwort falsch');}" class="btn-login">ANMELDEN</button>
 </div>
 
 <div id="loading-overlay"><b>Lade Daten...</b></div>
@@ -52,7 +45,6 @@
 <div class="container hidden" id="app-content">
     <div class="nav-top">
         <button class="btn-blue" onclick="showView('visual')">📊 30 Tage</button>
-        <button class="btn-orange" onclick="showView('year')">🗓️ Jahr</button>
         <button class="btn-green" onclick="showView('list')">📋 Liste</button>
         <button class="btn-gray" onclick="showView('note')">📝 NOTIZEN</button>
     </div>
@@ -68,21 +60,23 @@
         <table style="width:100%; border-collapse:collapse;"><tbody id="belegungsDaten"></tbody></table>
     </div>
 
-    <div id="view-note" class="content-view hidden" style="padding:15px;">
-        <h3>Neue Notiz</h3>
-        <select id="n-wohnung" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px;"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
-        <textarea id="n-text" rows="3" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px;" placeholder="Text..."></textarea>
+    <div id="view-note" class="content-view hidden" style="padding:15px; text-align: center;">
+        <h3 style="margin:0 0 10px 0;">Neue Notiz</h3>
+        <select id="n-wohnung" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px; border-radius: 8px;"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
+        <textarea id="n-text" rows="3" style="width:100%; padding:12px; border:1px solid #ddd; margin-bottom:10px; border-radius: 8px;" placeholder="Text..."></textarea>
         <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; font-weight:bold; border:none; border-radius:8px;">SPEICHERN</button>
-        <h3 style="margin-top:20px;">Letzte Notizen</h3>
+        <h3 style="margin-top:20px; border-top: 1px solid #eee; pt-4">Letzte Notizen</h3>
         <div id="notiz-liste"></div>
     </div>
 
     <div id="view-form" class="content-view hidden" style="padding:15px;">
         <input type="hidden" id="f-id">
-        <input type="text" id="gastName" style="width:100%; padding:12px; margin-bottom:10px;">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;"><input type="date" id="anreise"><input type="date" id="abreise"></div>
-        <canvas id="signature-pad" style="border:1px solid #eee; width:100%; height:200px;"></canvas>
-        <button onclick="saveData()" class="btn-green" style="width:100%; padding:15px; color:white; font-weight:bold; border:none;">💾 SPEICHERN</button>
+        <div style="border:1px solid #ddd; padding:15px; border-radius:10px;">
+            <input type="text" id="gastName" style="width:100%; padding:12px; margin-bottom:10px; border: 1px solid #eee;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;"><input type="date" id="anreise"><input type="date" id="abreise"></div>
+            <canvas id="signature-pad" style="border:1px solid #eee; width:100%; height:200px; background: #fafafa;"></canvas>
+            <button onclick="saveData()" class="btn-green" style="width:100%; padding:20px; color:white; font-weight:bold; border:none; border-radius:10px; margin-top:10px;">💾 SPEICHERN</button>
+        </div>
     </div>
 </div>
 
@@ -95,22 +89,35 @@
         try {
             const r = await fetch(API + "?nocache=" + Date.now());
             const data = await r.json();
-            db = data.buchungen || [];
-            notes = data.notizen || [];
+            
+            // HYBRID-LADE-LOGIK: Versteht altes und neues Format
+            if (data.buchungen) {
+                db = data.buchungen;
+                notes = data.notizen || [];
+            } else {
+                db = data;
+                notes = [];
+            }
+            
             renderTimeline(); renderTable(); renderNotes();
-        } catch(e) { console.log(e); }
+        } catch(e) { console.error("Ladefehler:", e); }
         document.getElementById('loading-overlay').style.display = 'none';
     }
 
     function renderNotes() {
         const cont = document.getElementById('notiz-liste');
-        cont.innerHTML = notes.length ? notes.map(n => `<div class="note-card"><b>${n.zeit} - ${n.wohnung}</b><br>${n.text}</div>`).join('') : '<small>Keine Notizen.</small>';
+        if (!notes || notes.length === 0) {
+            cont.innerHTML = '<small style="color:#999;">Keine Notizen gefunden.</small>';
+            return;
+        }
+        cont.innerHTML = notes.map(n => `<div class="note-card"><b>${n.zeit} - ${n.wohnung}</b><br>${n.text}</div>`).join('');
     }
 
     function showView(v) {
         document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden'));
         const target = (v === 'list') ? 'view-kalender' : 'view-' + v;
         document.getElementById(target).classList.remove('hidden');
+        if(v === 'visual') renderTimeline();
     }
 
     function renderTimeline() {
@@ -125,4 +132,42 @@
                 let s = new Date(b.anreise); let e = new Date(b.abreise);
                 let diff = Math.floor((s - today) / 86400000); let dur = Math.ceil((e - s) / 86400000);
                 if(diff + dur >= 0 && diff <= 30) {
-                    let left = (diff * 45) +
+                    let left = (diff * 45) + 22.5; let w = (dur * 45);
+                    row += `<div onclick="editEntry('${b.id}')" class="booking-bar" style="left:${left}px; width:${w-4}px; background:${b.signature?'#27ae60':'#3498db'};">${b.name}</div>`;
+                }
+            });
+            grid.innerHTML += row + '</div>';
+        });
+    }
+
+    function renderTable() {
+        const tb = document.getElementById('belegungsDaten'); tb.innerHTML = '';
+        db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
+            const sig = b.signature && b.signature.length > 500;
+            tb.innerHTML += `<tr onclick="editEntry('${b.id}')" style="border-bottom:1px solid #eee;"><td style="padding:15px;"><b>${b.name}</b><br><small>${b.wohnung}</small></td><td>${b.anreise}</td><td><span style="padding:4px 8px; border-radius:10px; font-size:10px; background:${sig?'#d4edda':'#fff3cd'}">${sig?'OK':'OFFEN'}</span></td></tr>`;
+        });
+    }
+
+    async function saveNote() {
+        const t = document.getElementById('n-text').value; if(!t) return;
+        document.getElementById('loading-overlay').style.display = 'flex';
+        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", wohnung: document.getElementById('n-wohnung').value, text: t}) });
+        document.getElementById('n-text').value = ""; setTimeout(load, 1500);
+    }
+
+    function editEntry(id) {
+        const b = db.find(x => x.id == id); if(!b) return;
+        document.getElementById('f-id').value = b.id; document.getElementById('gastName').value = b.name;
+        document.getElementById('anreise').value = b.anreise; document.getElementById('abreise').value = b.abreise;
+        showView('form');
+    }
+
+    async function saveData() {
+        const d = { id: document.getElementById('f-id').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, signature: document.getElementById('signature-pad').toDataURL() };
+        document.getElementById('loading-overlay').style.display = 'flex';
+        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) });
+        setTimeout(() => { load(); showView('visual'); }, 1500);
+    }
+</script>
+</body>
+</html>
