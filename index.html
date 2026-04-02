@@ -3,39 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v10.3</title>
+    <title>Dümmerblick Manager v10.4</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; --orange: #e67e22; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
-        
-        /* Login */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; color: white; flex-direction: column; }
         #pass-input { width: 280px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 20px; text-align: center; font-size: 18px; color: #000; }
         .btn-login { background: var(--success); color: white; width: 280px; padding: 20px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; }
-        
         .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding-bottom: 80px; }
-        .nav-top { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .nav-top { display: flex; gap: 5px; margin-bottom: 15px; }
         .nav-top button { flex: 1; min-width: 80px; padding: 15px 5px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 12px; cursor: pointer; }
-        
         .btn-blue { background: var(--secondary); }
         .btn-green { background: var(--success); }
         .btn-orange { background: var(--orange); }
         .btn-gray { background: #95a5a6; }
-        
         .hidden { display: none !important; }
-        
-        /* Formulare */
         .field-box { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
         .field-label { background: #eee; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #555; display: block; border-bottom: 1px solid #ddd; text-transform: uppercase; }
         input, select, textarea { width: 100%; padding: 12px; border: none; font-size: 16px; box-sizing: border-box; background: #fff; color: #000; }
-        
         canvas { background: #fafafa; width: 100%; height: 200px; touch-action: none; border-top: 1px solid #ddd; }
-        
-        /* Tabelle & Timeline */
         table { width: 100%; border-collapse: collapse; }
         td { padding: 12px 8px; border-bottom: 1px solid #eee; font-size: 14px; }
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-        
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; }
     </style>
 </head>
@@ -57,10 +45,7 @@
         <button class="btn-gray" onclick="showView('note')">📝 NOTIZ</button>
     </div>
 
-    <div id="view-visual" class="content-view">
-        <div id="timeline" style="overflow-x:auto;"></div>
-    </div>
-
+    <div id="view-visual" class="content-view"><div id="timeline" style="overflow-x:auto;"></div></div>
     <div id="view-year" class="content-view hidden">
         <div style="display:flex; gap:10px; margin-bottom:10px;">
             <select id="year-select" onchange="renderYear()"></select>
@@ -68,7 +53,6 @@
         </div>
         <div id="year-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:10px;"></div>
     </div>
-
     <div id="view-kalender" class="content-view hidden">
         <table>
             <thead><tr style="text-align:left; font-size:12px;"><th>Gast / Haus</th><th>Datum</th><th>Status</th></tr></thead>
@@ -77,13 +61,9 @@
     </div>
 
     <div id="view-note" class="content-view hidden">
-        <h3 style="margin-top:0;">Neue Notiz / Mangel</h3>
-        <div class="field-box"><span class="field-label">Wohnung</span>
-            <select id="n-wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select>
-        </div>
-        <div class="field-box"><span class="field-label">Beschreibung</span>
-            <textarea id="n-text" rows="5" placeholder="Was ist zu tun?"></textarea>
-        </div>
+        <h3>Neue Notiz</h3>
+        <div class="field-box"><span class="field-label">Wohnung</span><select id="n-wohnung"><option>Dümmerblick 1</option><option>Dümmerblick 2</option><option>Allgemein</option></select></div>
+        <div class="field-box"><span class="field-label">Beschreibung</span><textarea id="n-text" rows="5"></textarea></div>
         <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:20px; border-radius:10px; color:white; font-weight:bold; border:none; font-size:16px;">NOTIZ SPEICHERN</button>
     </div>
 
@@ -183,7 +163,7 @@
     function renderTimeline() {
         const cont = document.getElementById('timeline'); cont.innerHTML = '';
         const today = new Date(); today.setHours(0,0,0,0);
-        const dayWidth = 45; const navWidth = 145;
+        const dayWidth = 45; const navWidth = 160; // MASSIV BREITER
         let h = `<div style="display:grid; grid-template-columns:${navWidth}px repeat(31,${dayWidth}px); background:#eee; font-weight:bold;"><div style="padding:10px;">Einheit</div>`;
         for(let i=0; i<=30; i++) { let d = new Date(today); d.setDate(today.getDate()+i); h += `<div style="text-align:center; padding:5px; font-size:10px;">${d.getDate()}.${d.getMonth()+1}</div>`; }
         h += '</div>';
@@ -221,10 +201,8 @@
             cont.innerHTML += html + `</div></div>`;
         }
     }
-
     const curY = new Date().getFullYear(); const yS = document.getElementById('year-select');
     for(let y=curY-1; y<=curY+2; y++) { let o=document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; yS.appendChild(o); }
-
     function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; }
     const getP = (e) => { const r = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; return { x: cX - r.left, y: cY - r.top }; };
     canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const p = getP(e); ctx.moveTo(p.x, p.y); e.preventDefault(); });
