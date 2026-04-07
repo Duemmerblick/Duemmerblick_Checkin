@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v13.2</title>
+    <title>Dümmerblick Manager v13.3</title>
     <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --light: #f4f7f6; --empty: #f8f9fa; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
         #login-overlay { position: fixed; inset: 0; background: var(--primary); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; color: white; }
         #pass-input { width: 260px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; color: #000; }
@@ -39,6 +39,7 @@
         .form-group { margin-bottom: 10px; text-align: left; }
         .form-group label { display: block; font-size: 10px; color: #7f8c8d; margin-bottom: 2px; font-weight: bold; }
         .form-group input { width: 100%; padding: 10px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
+        .btn-clear { background: #eee; color: #666; border: none; padding: 8px; border-radius: 5px; font-size: 11px; margin-top: 5px; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
@@ -91,6 +92,7 @@
                 <div><label>Ausweis Nr.</label><input type="text" id="ausweis"></div>
             </div>
             <canvas id="signature-pad" style="border:1px solid #eee; width:100%; height:180px; border-radius:8px; background:#fafafa; touch-action:none;"></canvas>
+            <button onclick="clearCanvas()" class="btn-clear">❌ Unterschrift löschen</button>
             <button onclick="saveData()" class="btn-green" style="width:100%; padding:20px; color:white; border-radius:10px; font-weight:bold; border:none; margin-top:15px;">💾 SPEICHERN</button>
             <button onclick="showView('visual')" style="width:100%; margin-top:10px; background:none; border:none; color:#999;">Abbrechen</button>
         </div>
@@ -200,8 +202,6 @@
         document.getElementById('email').value = b.email || ""; document.getElementById('telefon').value = b.telefon || "";
         document.getElementById('ausweis').value = b.ausweis || "";
         showView('form'); 
-        
-        // WICHTIG: Erst Canvas stabilisieren, dann zeichnen!
         setTimeout(() => {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             if(b.signature && b.signature.length > 500) { 
@@ -212,8 +212,24 @@
         }, 350);
     }
 
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Wir zeichnen nichts neu, damit der signature-String beim Speichern leer/kurz wird
+    }
+
     async function saveData() {
-        const d = { id: document.getElementById('f-id').value, wohnung: document.getElementById('f-wohnung').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, email: document.getElementById('email').value, telefon: document.getElementById('telefon').value, ausweis: document.getElementById('ausweis').value, signature: canvas.toDataURL() };
+        const d = { 
+            id: document.getElementById('f-id').value, 
+            wohnung: document.getElementById('f-wohnung').value, 
+            name: document.getElementById('gastName').value, 
+            anreise: document.getElementById('anreise').value, 
+            abreise: document.getElementById('abreise').value, 
+            anschrift: document.getElementById('anschrift').value, 
+            email: document.getElementById('email').value, 
+            telefon: document.getElementById('telefon').value, 
+            ausweis: document.getElementById('ausweis').value, 
+            signature: canvas.toDataURL().length < 2000 ? "" : canvas.toDataURL() 
+        };
         document.getElementById('loading-overlay').style.display = 'flex';
         await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) });
         setTimeout(() => { load(); showView('visual'); }, 1500);
@@ -227,16 +243,7 @@
     const yS = document.getElementById('year-select');
     for(let y=curY-1; y<=curY+2; y++) { let o=document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; yS.appendChild(o); }
 
-    function resizeCanvas() { 
-        // Wir setzen die interne Größe des Canvas auf die echte Displaygröße
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width; 
-        canvas.height = rect.height; 
-        ctx.lineWidth = 3; 
-        ctx.lineCap = "round"; 
-        ctx.strokeStyle = "#000"; 
-    }
-    
+    function resizeCanvas() { const rect = canvas.getBoundingClientRect(); canvas.width = rect.width; canvas.height = rect.height; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#000"; }
     canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const r = canvas.getBoundingClientRect(); ctx.moveTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); e.preventDefault(); });
     canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const r = canvas.getBoundingClientRect(); ctx.lineTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); ctx.stroke(); e.preventDefault(); });
     window.addEventListener('touchend', () => drawing = false);
