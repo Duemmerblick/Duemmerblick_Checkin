@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v13.1</title>
+    <title>Dümmerblick Manager v13.2</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --light: #f4f7f6; --empty: #f8f9fa; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
@@ -104,7 +104,6 @@
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
-    // Login-Funktion ganz oben!
     function checkLogin() {
         const p = document.getElementById('pass-input').value.toLowerCase().trim();
         if(p === 'duemmer123') {
@@ -200,8 +199,17 @@
         document.getElementById('abreise').value = b.abreise; document.getElementById('anschrift').value = b.anschrift || "";
         document.getElementById('email').value = b.email || ""; document.getElementById('telefon').value = b.telefon || "";
         document.getElementById('ausweis').value = b.ausweis || "";
-        showView('form'); ctx.clearRect(0,0,canvas.width,canvas.height);
-        if(b.signature && b.signature.length > 500) { let img = new Image(); img.onload = () => ctx.drawImage(img,0,0); img.src = b.signature; }
+        showView('form'); 
+        
+        // WICHTIG: Erst Canvas stabilisieren, dann zeichnen!
+        setTimeout(() => {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            if(b.signature && b.signature.length > 500) { 
+                let img = new Image(); 
+                img.onload = () => ctx.drawImage(img,0,0, canvas.width, canvas.height); 
+                img.src = b.signature; 
+            }
+        }, 350);
     }
 
     async function saveData() {
@@ -219,7 +227,16 @@
     const yS = document.getElementById('year-select');
     for(let y=curY-1; y<=curY+2; y++) { let o=document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; yS.appendChild(o); }
 
-    function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#000"; }
+    function resizeCanvas() { 
+        // Wir setzen die interne Größe des Canvas auf die echte Displaygröße
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width; 
+        canvas.height = rect.height; 
+        ctx.lineWidth = 3; 
+        ctx.lineCap = "round"; 
+        ctx.strokeStyle = "#000"; 
+    }
+    
     canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const r = canvas.getBoundingClientRect(); ctx.moveTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); e.preventDefault(); });
     canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const r = canvas.getBoundingClientRect(); ctx.lineTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); ctx.stroke(); e.preventDefault(); });
     window.addEventListener('touchend', () => drawing = false);
