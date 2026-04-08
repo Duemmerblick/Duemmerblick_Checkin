@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v13.7</title>
+    <title>Dümmerblick Manager v13.8</title>
     <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; --cell-w: 45px; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
         #login-overlay { position: fixed; inset: 0; background: var(--primary); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; color: white; }
         #pass-input { width: 260px; padding: 15px; border-radius: 10px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; color: #000; }
@@ -19,12 +19,12 @@
         .timeline-labels { width: 130px; min-width: 130px; background: #f9f9f9; border-right: 2px solid #ddd; }
         .label-cell { height: 60px; padding: 0 10px; display: flex; align-items: center; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee; }
         .timeline-scroll { flex: 1; overflow-x: auto; position: relative; }
-        .grid-container { position: relative; min-width: 1400px; } 
+        .grid-container { position: relative; width: calc(32 * var(--cell-w)); } 
         .grid-header { display: flex; height: 35px; background: #eee; border-bottom: 1px solid #ddd; }
-        .day-label { width: 45px; min-width: 45px; text-align: center; line-height: 35px; font-size: 10px; border-right: 1px solid #ddd; }
-        .grid-row { height: 60px; display: flex; border-bottom: 1px solid #eee; position: relative; }
-        .grid-cell { width: 45px; min-width: 45px; border-right: 1px solid #f8f8f8; }
-        .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 6px; font-size: 9px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .day-label { width: var(--cell-w); min-width: var(--cell-w); text-align: center; line-height: 35px; font-size: 10px; border-right: 1px solid #ddd; box-sizing: border-box; }
+        .grid-row { height: 60px; display: flex; border-bottom: 1px solid #eee; position: relative; width: 100%; }
+        .grid-cell { width: var(--cell-w); min-width: var(--cell-w); border-right: 1px solid #f0f0f0; box-sizing: border-box; height: 100%; }
+        .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 6px; font-size: 9px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 5; }
         .year-day-box { width: 100%; padding-bottom: 100%; position: relative; border: 0.5px solid #e0e0e0; background: var(--empty); overflow: hidden; }
         .day-num { position: absolute; z-index: 10; width: 100%; text-align: center; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: bold; pointer-events: none; color: #333; }
         .split-top { position: absolute; top: 0; left: 0; width: 100%; height: 100%; clip-path: polygon(0 0, 100% 0, 0 100%); }
@@ -110,18 +110,15 @@
         const apt = document.getElementById('apt-filter').value; const cont = document.getElementById('year-container'); cont.innerHTML = '';
         const aptBookings = db.filter(b => b.wohnung === apt).sort((a,b) => new Date(a.anreise) - new Date(b.anreise));
         const weekdays = ["M", "D", "M", "D", "F", "S", "S"];
-
         for(let m=0; m<12; m++) {
             let mName = new Date(year, m).toLocaleString('de-DE', {month:'long'});
             let h = `<div style="background:#fff; padding:10px; border-radius:8px; border:1px solid #ddd;">
                         <div style="text-align:center; font-weight:bold; background:#2c3e50; color:white; padding:5px; border-radius:4px; margin-bottom:5px;">${mName}</div>
                         <div class="weekday-header">${weekdays.map(d => `<div>${d}</div>`).join('')}</div>
                         <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px;">`;
-            
             let firstDay = new Date(year, m, 1).getDay();
             let shift = (firstDay === 0) ? 6 : firstDay - 1;
             for(let s=0; s<shift; s++) { h += `<div class="year-day-box" style="background:transparent; border:none;"></div>`; }
-
             let dMax = new Date(year, m+1, 0).getDate();
             for(let d=1; d<=dMax; d++) {
                 let ds = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -140,9 +137,10 @@
     function renderTimeline() {
         const grid = document.getElementById('timeline-grid'); grid.innerHTML = ''; 
         const today = new Date(); today.setHours(0,0,0,0);
+        const cellW = 45; // Fixer Wert für JS
         
         let header = '<div class="grid-header">'; 
-        for(let i=0; i<=30; i++) { 
+        for(let i=0; i<=31; i++) { 
             let d = new Date(today); d.setDate(today.getDate()+i); 
             header += `<div class="day-label">${d.getDate()}.${d.getMonth()+1}</div>`; 
         } 
@@ -150,7 +148,7 @@
 
         ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
             let row = `<div class="grid-row">`; 
-            for(let i=0; i<=30; i++) { row += `<div class="grid-cell"></div>`; }
+            for(let i=0; i<=31; i++) { row += `<div class="grid-cell"></div>`; }
             
             let aptBookings = db.filter(b => b.wohnung === apt).sort((a,b) => new Date(a.anreise) - new Date(b.anreise));
             
@@ -158,15 +156,17 @@
                 const sDate = new Date(b.anreise); sDate.setHours(0,0,0,0);
                 const eDate = new Date(b.abreise); eDate.setHours(0,0,0,0);
                 
-                // Exakte Tagesdifferenz ohne Millisekunden-Matsch
-                const diffDays = Math.round((sDate - today) / (1000 * 60 * 60 * 24));
-                const duration = Math.round((eDate - sDate) / (1000 * 60 * 60 * 24));
+                // Exakte Berechnung der Tage relativ zu "heute"
+                const diffStart = Math.round((sDate.getTime() - today.getTime()) / 86400000);
+                const diffEnd = Math.round((eDate.getTime() - today.getTime()) / 86400000);
+                const duration = diffEnd - diffStart;
 
-                if(diffDays + duration >= 0 && diffDays <= 30) { 
-                    // 45px pro Tag + 22.5px Versatz für die Tagesmitte
-                    let left = (diffDays * 45) + 22.5; 
-                    let width = (duration * 45); 
-                    row += `<div onclick="editEntry('${b.id}')" class="booking-bar" style="left:${left}px; width:${width-4}px; background:${getBookingColor(b, aptBookings)};">${b.name}</div>`; 
+                if(diffEnd >= 0 && diffStart <= 31) { 
+                    // 22.5px ist EXAKT die Mitte von 45px
+                    let left = (diffStart * cellW) + (cellW / 2); 
+                    let width = (duration * cellW); 
+                    // Balken leicht schmaler damit man die Trennlinie sieht
+                    row += `<div onclick="editEntry('${b.id}')" class="booking-bar" style="left:${left}px; width:${width-2}px; background:${getBookingColor(b, aptBookings)};">${b.name}</div>`; 
                 }
             });
             grid.innerHTML += row + '</div>';
@@ -175,14 +175,12 @@
 
     function renderTable() { const tb = document.getElementById('belegungsDaten'); tb.innerHTML = ''; db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => { const sig = b.signature && b.signature.length > 500; tb.innerHTML += `<tr onclick="editEntry('${b.id}')" style="border-bottom:1px solid #eee;"><td style="padding:15px;"><b>${b.name}</b><br><small>${b.wohnung}</small></td><td>${b.anreise}</td><td><span style="padding:4px 8px; border-radius:10px; font-size:10px; background:${sig?'#d4edda':'#fff3cd'}">${sig?'OK':'OFFEN'}</span></td></tr>`; }); }
     function showView(v) { document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden')); const target = (v === 'list') ? 'view-kalender' : 'view-' + v; document.getElementById(target).classList.remove('hidden'); if(v === 'visual') renderTimeline(); if(v === 'year') renderYear(); if(v === 'form') setTimeout(resizeCanvas, 200); }
-    
     function editEntry(id) {
         const b = db.find(x => x.id == id); if(!b) return;
         document.getElementById('f-id').value = b.id; document.getElementById('f-wohnung').value = b.wohnung; document.getElementById('gastName').value = b.name; document.getElementById('anreise').value = b.anreise; document.getElementById('abreise').value = b.abreise; document.getElementById('anschrift').value = b.anschrift || ""; document.getElementById('email').value = b.email || ""; document.getElementById('telefon').value = b.telefon || ""; document.getElementById('ausweis').value = b.ausweis || "";
         showView('form'); 
         setTimeout(() => { ctx.clearRect(0,0,canvas.width,canvas.height); if(b.signature && b.signature.length > 500) { let img = new Image(); img.onload = () => ctx.drawImage(img,0,0, canvas.width, canvas.height); img.src = b.signature; isCanvasEmpty = false; } else { isCanvasEmpty = true; } }, 350);
     }
-
     function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); isCanvasEmpty = true; }
     async function saveData() { const sig = isCanvasEmpty ? "DELETE" : canvas.toDataURL(); const d = { id: document.getElementById('f-id').value, wohnung: document.getElementById('f-wohnung').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, email: document.getElementById('email').value, telefon: document.getElementById('telefon').value, ausweis: document.getElementById('ausweis').value, signature: sig }; document.getElementById('loading-overlay').style.display = 'flex'; await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) }); setTimeout(() => { load(); showView('visual'); }, 1500); }
     function renderNotes() { const cont = document.getElementById('notiz-liste'); if (!notes || notes.length === 0) { cont.innerHTML = '<small>Keine Notizen.</small>'; return; } cont.innerHTML = notes.map(n => `<div class="note-card"><div><b>${n.zeit} - ${n.wohnung}</b><br>${n.text}</div><button class="btn-done" onclick="markDone(${n.row})">ERLEDIGT</button></div>`).join(''); }
