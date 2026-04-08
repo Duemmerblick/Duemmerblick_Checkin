@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v13.6</title>
+    <title>Dümmerblick Manager v13.7</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
@@ -118,10 +118,8 @@
                         <div class="weekday-header">${weekdays.map(d => `<div>${d}</div>`).join('')}</div>
                         <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px;">`;
             
-            let firstDay = new Date(year, m, 1).getDay(); // 0=So, 1=Mo...
-            let shift = (firstDay === 0) ? 6 : firstDay - 1; // Berechne Verschiebung für Montag-Start
-            
-            // Leere Boxen für den Versatz
+            let firstDay = new Date(year, m, 1).getDay();
+            let shift = (firstDay === 0) ? 6 : firstDay - 1;
             for(let s=0; s<shift; s++) { h += `<div class="year-day-box" style="background:transparent; border:none;"></div>`; }
 
             let dMax = new Date(year, m+1, 0).getDate();
@@ -140,14 +138,36 @@
     }
 
     function renderTimeline() {
-        const grid = document.getElementById('timeline-grid'); grid.innerHTML = ''; const today = new Date(); today.setHours(0,0,0,0);
-        let header = '<div class="grid-header">'; for(let i=0; i<=30; i++) { let d = new Date(today); d.setDate(today.getDate()+i); header += `<div class="day-label">${d.getDate()}.${d.getMonth()+1}</div>`; } header += '</div>'; grid.innerHTML += header;
+        const grid = document.getElementById('timeline-grid'); grid.innerHTML = ''; 
+        const today = new Date(); today.setHours(0,0,0,0);
+        
+        let header = '<div class="grid-header">'; 
+        for(let i=0; i<=30; i++) { 
+            let d = new Date(today); d.setDate(today.getDate()+i); 
+            header += `<div class="day-label">${d.getDate()}.${d.getMonth()+1}</div>`; 
+        } 
+        header += '</div>'; grid.innerHTML += header;
+
         ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
-            let row = `<div class="grid-row">`; for(let i=0; i<=30; i++) { row += `<div class="grid-cell"></div>`; }
+            let row = `<div class="grid-row">`; 
+            for(let i=0; i<=30; i++) { row += `<div class="grid-cell"></div>`; }
+            
             let aptBookings = db.filter(b => b.wohnung === apt).sort((a,b) => new Date(a.anreise) - new Date(b.anreise));
+            
             aptBookings.forEach((b) => {
-                let s = new Date(b.anreise); let e = new Date(b.abreise); let diff = Math.floor((s - today) / 86400000); let dur = Math.ceil((e - s) / 86400000);
-                if(diff + dur >= 0 && diff <= 30) { let left = (diff * 45) + 22.5; let w = (dur * 45); row += `<div onclick="editEntry('${b.id}')" class="booking-bar" style="left:${left}px; width:${w-4}px; background:${getBookingColor(b, aptBookings)}; text-align:center; line-height:34px; color:white; font-size:10px;">${b.name}</div>`; }
+                const sDate = new Date(b.anreise); sDate.setHours(0,0,0,0);
+                const eDate = new Date(b.abreise); eDate.setHours(0,0,0,0);
+                
+                // Exakte Tagesdifferenz ohne Millisekunden-Matsch
+                const diffDays = Math.round((sDate - today) / (1000 * 60 * 60 * 24));
+                const duration = Math.round((eDate - sDate) / (1000 * 60 * 60 * 24));
+
+                if(diffDays + duration >= 0 && diffDays <= 30) { 
+                    // 45px pro Tag + 22.5px Versatz für die Tagesmitte
+                    let left = (diffDays * 45) + 22.5; 
+                    let width = (duration * 45); 
+                    row += `<div onclick="editEntry('${b.id}')" class="booking-bar" style="left:${left}px; width:${width-4}px; background:${getBookingColor(b, aptBookings)};">${b.name}</div>`; 
+                }
             });
             grid.innerHTML += row + '</div>';
         });
