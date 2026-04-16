@@ -3,36 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v14.8 Turbo</title>
+    <title>Dümmerblick Manager v14.9</title>
     <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; --cell-w: 45px; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; --cell-w: 46px; } /* Breite auf 46px fixiert für exaktes Raster */
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
         
-        /* Header & Progress Bar */
         .app-header { background: white; padding: 12px 15px; display: flex; align-items: center; border-bottom: 1px solid #ddd; gap: 10px; position: relative; }
         #sync-bar { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--secondary); width: 0%; transition: width 0.4s; }
         
-        /* Login & Restliches Styling identisch zu v14.7 */
         #login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, var(--primary), #1a252f); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; color: white; text-align: center; }
         .logo-svg-large { width: 100px; height: 100px; margin-bottom: 20px; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3)); }
         #pass-input { width: 240px; padding: 15px; border-radius: 12px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; }
         .btn-login { background: var(--success); color: white; width: 240px; padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; }
-        .logo-svg-small { height: 35px; width: 35px; }
         .app-header h1 { font-size: 18px; margin: 0; color: var(--primary); font-weight: 800; text-transform: uppercase; }
         .nav-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: #fff; }
         .nav-top button { padding: 14px 5px; border: none; border-radius: 10px; font-weight: bold; color: white; font-size: 13px; cursor: pointer; }
         .btn-blue { background: var(--secondary); } .btn-green { background: var(--success); } .btn-orange { background: var(--orange); } .btn-gray { background: #95a5a6; }
         .hidden { display: none !important; }
+
+        /* Timeline Fix */
         .timeline-wrapper { display: flex; border: 1px solid #ddd; margin: 10px; border-radius: 14px; overflow: hidden; background: white; }
         .timeline-labels { width: 120px; min-width: 120px; background: #fdfdfd; border-right: 2px solid #ddd; }
         .label-cell { height: 60px; padding: 0 10px; display: flex; align-items: center; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee; }
         .timeline-scroll { flex: 1; overflow-x: auto; position: relative; }
         .grid-container { position: relative; width: fit-content; } 
         .grid-header { display: flex; height: 35px; background: #f4f6f7; border-bottom: 1px solid #ddd; }
-        .day-label { width: var(--cell-w); min-width: var(--cell-w); text-align: center; line-height: 35px; font-size: 10px; border-right: 1px solid #ddd; }
+        .day-label { width: var(--cell-w); min-width: var(--cell-w); text-align: center; line-height: 35px; font-size: 10px; border-right: 1px solid #ddd; box-sizing: border-box; }
         .grid-row { height: 60px; display: flex; border-bottom: 1px solid #eee; position: relative; width: calc(32 * var(--cell-w)); }
-        .grid-cell { width: var(--cell-w); min-width: var(--cell-w); border-right: 1px solid #f0f0f0; }
-        .booking-bar { position: absolute; height: 34px; top: 13px; color: white; border-radius: 8px; font-size: 10px; text-align: center; line-height: 34px; cursor: pointer; font-weight: bold; z-index: 5; border: 1px solid rgba(255,255,255,0.2); white-space: nowrap; padding: 0 5px; overflow: hidden; }
+        .grid-cell { width: var(--cell-w); min-width: var(--cell-w); border-right: 1px solid #f0f0f0; box-sizing: border-box; }
+        
+        /* Der Balken - Exakt zentriert */
+        .booking-bar { position: absolute; height: 36px; top: 12px; color: white; border-radius: 8px; font-size: 10px; text-align: center; line-height: 36px; cursor: pointer; font-weight: bold; z-index: 5; border: 1.5px solid rgba(255,255,255,0.3); white-space: nowrap; padding: 0 5px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
         .list-table { width: 100%; border-collapse: collapse; }
         .list-table tr { border-bottom: 1px solid #eee; }
         .list-table td { padding: 12px 15px; }
@@ -85,48 +87,56 @@
 
 <script>
     const API = "https://script.google.com/macros/s/AKfycbwmTGnzW0mS0HKMOZTQyTy68-VOlhNdJGjwU05pCg8tJ3ZVDA0cVZml1e-rDCrCF5R9/exec"; 
-    // TURBO: Daten aus dem Cache laden
     let db = JSON.parse(localStorage.getItem('dm_cache_db')) || []; 
     let notes = JSON.parse(localStorage.getItem('dm_cache_notes')) || [];
     let isCanvasEmpty = true; const canvas = document.getElementById('signature-pad'); const ctx = canvas ? canvas.getContext('2d') : null;
 
-    function checkLogin() { 
-        const p = document.getElementById('pass-input').value.toLowerCase().trim(); 
-        if(p === 'duemmer123') { 
-            document.getElementById('login-overlay').style.display = 'none'; 
-            document.getElementById('app-content').classList.remove('hidden'); 
-            renderAll(); // Sofort rendern mit Cache-Daten
-            load();      // Hintergrund-Sync starten
-        } else { alert('Falsch'); } 
-    }
+    function checkLogin() { const p = document.getElementById('pass-input').value.toLowerCase().trim(); if(p === 'duemmer123') { document.getElementById('login-overlay').style.display = 'none'; document.getElementById('app-content').classList.remove('hidden'); renderAll(); load(); } else { alert('Falsch'); } }
 
     async function load() {
-        const bar = document.getElementById('sync-bar');
-        bar.style.width = '30%';
+        const bar = document.getElementById('sync-bar'); bar.style.width = '30%';
         try {
             const r = await fetch(API + "?nocache=" + Date.now());
             const rawData = await r.json();
-            
-            // Daten verarbeiten
             db = Array.isArray(rawData) ? rawData : (rawData.buchungen || []);
             notes = rawData.notizen || [];
-            
-            // Cache aktualisieren
             localStorage.setItem('dm_cache_db', JSON.stringify(db));
             localStorage.setItem('dm_cache_notes', JSON.stringify(notes));
-            
             bar.style.width = '100%';
-            renderAll(); // Ansicht mit frischen Daten aktualisieren
+            renderAll();
             setTimeout(() => bar.style.width = '0%', 800);
-        } catch(e) { 
-            console.error(e); 
-            bar.style.backgroundColor = 'red'; 
-        }
+        } catch(e) { console.error(e); bar.style.backgroundColor = 'red'; }
     }
 
     function renderAll() { renderTimeline(); renderTable(); renderYear(); }
 
-    // Hilfsfunktionen (identisch zu v14.7)
+    function renderTimeline() {
+        const grid = document.getElementById('timeline-grid'); if(!grid) return; grid.innerHTML = ''; 
+        const today = new Date(); today.setHours(0,0,0,0);
+        let header = '<div class="grid-header">'; for(let i=0; i<=31; i++) { let d = new Date(today); d.setDate(today.getDate()+i); header += `<div class="day-label">${d.getDate()}.${d.getMonth()+1}</div>`; }
+        header += '</div>'; grid.innerHTML += header;
+        
+        const cellW = 46; // Fest definierte Breite pro Zelle
+
+        ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
+            let row = `<div class="grid-row">`; for(let i=0; i<=31; i++) row += `<div class="grid-cell"></div>`;
+            db.filter(b => b.wohnung === apt).forEach(b => {
+                const s = new Date(b.anreise); s.setHours(0,0,0,0);
+                const e = new Date(b.abreise); e.setHours(0,0,0,0);
+                const diff = Math.round((s.getTime() - today.getTime()) / 86400000);
+                const dur = Math.round((e.getTime() - s.getTime()) / 86400000);
+                
+                if(diff + dur >= 0 && diff <= 31) { 
+                    // PRÄZISIONS-BERECHNUNG: Startet exakt in der Mitte der Anreisezelle (Index * Breite + halbe Breite)
+                    const leftPos = (diff * cellW) + (cellW / 2);
+                    const widthPos = (dur * cellW);
+                    row += `<div onclick="editEntry('${b.id}')" class="booking-bar" style="left:${leftPos}px; width:${widthPos}px; background:${getBookingColor(b, apt)}">${b.name}</div>`; 
+                }
+            });
+            grid.innerHTML += row + '</div>';
+        });
+    }
+
     function renderYear() {
         const year = parseInt(document.getElementById('year-select').value) || 2026;
         const apt = document.getElementById('apt-filter').value; const cont = document.getElementById('year-container'); cont.innerHTML = '';
@@ -149,6 +159,7 @@
             cont.innerHTML += h + `</div></div>`;
         }
     }
+
     function renderTable() {
         const tb = document.getElementById('belegungsDaten'); if(!tb) return; tb.innerHTML = '';
         db.sort((a,b) => new Date(a.anreise) - new Date(b.anreise)).forEach(b => {
@@ -156,24 +167,7 @@
             tb.innerHTML += `<tr onclick="editEntry('${b.id}')" style="cursor:pointer;"><td><b>${b.name}</b> <small>(${b.wohnung})</small><br><small style="color:#666;">📅 ${b.anreise} bis ${b.abreise}</small></td><td style="text-align:right;"><span style="padding:3px 8px; border-radius:10px; font-size:10px; background:${sig?'#d4edda':'#fff3cd'}">${sig?'OK':'OFFEN'}</span></td></tr>`;
         });
     }
-    function renderTimeline() {
-        const grid = document.getElementById('timeline-grid'); if(!grid) return; grid.innerHTML = ''; 
-        const today = new Date(); today.setHours(0,0,0,0);
-        let header = '<div class="grid-header">'; for(let i=0; i<=31; i++) { let d = new Date(today); d.setDate(today.getDate()+i); header += `<div class="day-label">${d.getDate()}.${d.getMonth()+1}</div>`; }
-        header += '</div>'; grid.innerHTML += header;
-        ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
-            let row = `<div class="grid-row">`; for(let i=0; i<=31; i++) row += `<div class="grid-cell"></div>`;
-            db.filter(b => b.wohnung === apt).forEach(b => {
-                const s = new Date(b.anreise); const e = new Date(b.abreise);
-                const diff = Math.round((s.getTime() - today.getTime()) / 86400000);
-                const dur = Math.round((e.getTime() - s.getTime()) / 86400000);
-                if(diff + dur >= 0 && diff <= 31) { 
-                    row += `<div onclick="editEntry('${b.id}')" class="booking-bar" style="left:${(diff*45)+22.5}px; width:${(dur*45)}px; background:${getBookingColor(b, apt)}">${b.name}</div>`; 
-                }
-            });
-            grid.innerHTML += row + '</div>';
-        });
-    }
+
     function getBookingColor(b, apt) { const all = db.filter(x => x.wohnung === apt).sort((k,l) => new Date(k.anreise) - new Date(l.anreise)); if (b.signature && b.signature.length > 500) return 'var(--success)'; return (all.findIndex(x => x.id === b.id) % 2 === 0) ? 'var(--secondary)' : 'var(--secondary-light)'; }
     function showView(v) { document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden')); const target = (v === 'list') ? 'view-kalender' : 'view-' + v; document.getElementById(target).classList.remove('hidden'); if(v === 'form') setTimeout(resizeCanvas, 200); }
     function editEntry(id) {
@@ -184,21 +178,10 @@
         setTimeout(() => { if(ctx) { ctx.clearRect(0,0,canvas.width,canvas.height); if(b.signature && b.signature.length > 500) { let img = new Image(); img.onload = () => ctx.drawImage(img,0,0, canvas.width, canvas.height); img.src = b.signature; isCanvasEmpty = false; } else isCanvasEmpty = true; } }, 350);
     }
     function clearCanvas() { if(ctx) { ctx.clearRect(0, 0, canvas.width, canvas.height); isCanvasEmpty = true; } }
-    async function saveData() { 
-        const d = { id: document.getElementById('f-id').value, wohnung: document.getElementById('f-wohnung').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, email: document.getElementById('email').value, telefon: document.getElementById('telefon').value, ausweis: document.getElementById('ausweis').value, signature: isCanvasEmpty ? "DELETE" : canvas.toDataURL() }; 
-        document.getElementById('sync-bar').style.width = '50%'; 
-        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) }); 
-        load(); 
-        showView('visual'); 
-    }
+    async function saveData() { const d = { id: document.getElementById('f-id').value, wohnung: document.getElementById('f-wohnung').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, email: document.getElementById('email').value, telefon: document.getElementById('telefon').value, ausweis: document.getElementById('ausweis').value, signature: isCanvasEmpty ? "DELETE" : canvas.toDataURL() }; document.getElementById('sync-bar').style.width = '50%'; await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) }); load(); showView('visual'); }
     const curY = 2026; const yS = document.getElementById('year-select'); for(let y=curY-1; y<=curY+2; y++) { let o=document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; yS.appendChild(o); }
     function resizeCanvas() { const rect = canvas.getBoundingClientRect(); canvas.width = rect.width; canvas.height = rect.height; ctx.lineWidth = 3; ctx.lineCap = "round"; }
-    let drawing = false; 
-    if(canvas) {
-        canvas.addEventListener('touchstart', (e) => { drawing = true; isCanvasEmpty = false; ctx.beginPath(); const r = canvas.getBoundingClientRect(); ctx.moveTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); e.preventDefault(); });
-        canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const r = canvas.getBoundingClientRect(); ctx.lineTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); ctx.stroke(); e.preventDefault(); });
-        window.addEventListener('touchend', () => drawing = false);
-    }
+    let drawing = false; if(canvas) { canvas.addEventListener('touchstart', (e) => { drawing = true; isCanvasEmpty = false; ctx.beginPath(); const r = canvas.getBoundingClientRect(); ctx.moveTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); e.preventDefault(); }); canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const r = canvas.getBoundingClientRect(); ctx.lineTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); ctx.stroke(); e.preventDefault(); }); window.addEventListener('touchend', () => drawing = false); }
 </script>
 </body>
 </html>
