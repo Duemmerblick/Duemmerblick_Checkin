@@ -3,30 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v15.0</title>
+    <title>Dümmerblick Manager v15.1</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; --cell-w: 46px; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
-        
-        /* Header Fix - Logo wieder klein */
         .app-header { background: white; padding: 10px 15px; display: flex; align-items: center; border-bottom: 1px solid #ddd; gap: 10px; position: relative; height: 50px; box-sizing: border-box; }
         #sync-bar { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--secondary); width: 0%; transition: width 0.4s; }
         .logo-svg-small { height: 30px; width: 30px; flex-shrink: 0; }
         .app-header h1 { font-size: 16px; margin: 0; color: var(--primary); font-weight: 800; text-transform: uppercase; white-space: nowrap; }
-        
-        /* Login */
         #login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, var(--primary), #1a252f); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; color: white; text-align: center; }
         .logo-svg-large { width: 90px; height: 90px; margin-bottom: 20px; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3)); }
         #pass-input { width: 240px; padding: 15px; border-radius: 12px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; }
         .btn-login { background: var(--success); color: white; width: 240px; padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; }
-
-        /* Navigation */
         .nav-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: #fff; }
         .nav-top button { padding: 14px 5px; border: none; border-radius: 10px; font-weight: bold; color: white; font-size: 13px; cursor: pointer; }
         .btn-blue { background: var(--secondary); } .btn-green { background: var(--success); } .btn-orange { background: var(--orange); } .btn-gray { background: #95a5a6; }
         .hidden { display: none !important; }
-
-        /* Timeline & Year & Form (Rest identisch zu v14.9) */
         .timeline-wrapper { display: flex; border: 1px solid #ddd; margin: 10px; border-radius: 14px; overflow: hidden; background: white; }
         .timeline-labels { width: 110px; min-width: 110px; background: #fdfdfd; border-right: 2px solid #ddd; }
         .label-cell { height: 60px; padding: 0 10px; display: flex; align-items: center; font-weight: bold; font-size: 11px; border-bottom: 1px solid #eee; }
@@ -45,6 +37,10 @@
         .split-top, .split-bottom, .full-day { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; }
         .split-top { clip-path: polygon(0 0, 100% 0, 0 100%); }
         .split-bottom { clip-path: polygon(100% 0, 100% 100%, 0 100%); border-top: 1.5px solid white; }
+        /* Checklist Style */
+        .check-item { display: flex; align-items: center; padding: 10px 0; border-top: 1px solid #f9f9f9; }
+        .check-item input[type="checkbox"] { width: 22px; height: 22px; margin-right: 12px; accent-color: var(--success); }
+        .check-item label { font-size: 15px; color: var(--primary); flex: 1; }
     </style>
 </head>
 <body>
@@ -67,13 +63,27 @@
         <button class="btn-blue" onclick="showView('visual')">📊 30 TAGE</button>
         <button class="btn-orange" onclick="showView('year')">🗓️ JAHR</button>
         <button class="btn-green" onclick="showView('list')">📋 LISTE</button>
-        <button class="btn-gray" onclick="showView('note')">📝 NOTIZEN</button>
+        <button class="btn-gray" onclick="showView('note')">📝 AUFGABEN</button>
     </div>
 
     <div id="view-visual" class="content-view"><div class="timeline-wrapper"><div class="timeline-labels"><div class="label-cell" style="height:35px; background:#f1f1f1;">Einheit</div><div class="label-cell">Dümmerblick 1</div><div class="label-cell">Dümmerblick 2</div></div><div class="timeline-scroll"><div class="grid-container" id="timeline-grid"></div></div></div></div>
-    <div id="view-year" class="content-view hidden"><div style="padding:10px;"><select id="year-select" onchange="renderYear()"></select><select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div><div id="year-container" style="padding:10px; display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;"></div></div>
+    
+    <div id="view-year" class="content-view hidden">
+        <div style="padding:10px;"><select id="year-select" onchange="renderYear()"></select><select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div>
+        <div id="year-container" style="padding:10px; display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;"></div>
+    </div>
+    
     <div id="view-kalender" class="content-view hidden"><table class="list-table"><tbody id="belegungsDaten"></tbody></table></div>
-    <div id="view-note" class="content-view hidden" style="padding:15px;"><textarea id="n-text" rows="3" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd;"></textarea><button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; font-weight:bold; border-radius:10px; border:none; margin-top:10px;">SPEICHERN</button><div id="notiz-liste"></div></div>
+    
+    <div id="view-note" class="content-view hidden" style="padding:15px;">
+        <div style="background:white; padding:15px; border-radius:14px; border:1px solid #ddd; margin-bottom:15px;">
+            <label style="font-weight:bold; color:var(--primary);">NEUE LISTE / AUFGABE</label>
+            <textarea id="n-text" rows="4" placeholder="Mehrere Zeilen = Checkliste" style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee; margin-top:8px; box-sizing:border-box;"></textarea>
+            <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; font-weight:bold; border-radius:10px; border:none; margin-top:10px;">HINZUFÜGEN</button>
+        </div>
+        <div id="notiz-liste"></div>
+    </div>
+
     <div id="view-form" class="content-view hidden" style="padding:15px;"><div style="background:#fff; border-radius:16px; padding:20px; border:1px solid #ddd;"><input type="hidden" id="f-id"><input type="hidden" id="f-wohnung">
         <div class="form-group"><label>Name</label><input type="text" id="gastName" style="width:100%; padding:10px; border:1px solid #eee;"></div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"><div><label>Anreise</label><input type="date" id="anreise" style="width:100%; padding:10px;"></div><div><label>Abreise</label><input type="date" id="abreise" style="width:100%; padding:10px;"></div></div>
@@ -110,7 +120,40 @@
         } catch(e) { console.error(e); bar.style.backgroundColor = 'red'; }
     }
 
-    function renderAll() { renderTimeline(); renderTable(); renderYear(); }
+    function renderAll() { renderTimeline(); renderTable(); renderYear(); renderNotes(); }
+
+    function renderNotes() {
+        const cont = document.getElementById('notiz-liste'); if(!cont) return; cont.innerHTML = '';
+        notes.slice().reverse().forEach(n => {
+            const lines = n.text.split('\n').filter(l => l.trim() !== "");
+            let h = `<div style="background:white; padding:12px; margin-bottom:15px; border-radius:12px; border:1px solid #eee; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <small style="color:#999;">${n.zeit}</small>
+                            <button onclick="markDone(${n.row})" style="background:#fff1f0; color:var(--danger); border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold;">ERLEDIGT / LÖSCHEN</button>
+                        </div>`;
+            lines.forEach((line, idx) => {
+                h += `<div class="check-item">
+                        <input type="checkbox" id="c-${n.row}-${idx}">
+                        <label for="c-${n.row}-${idx}">${line}</label>
+                      </div>`;
+            });
+            h += `</div>`;
+            cont.innerHTML += h;
+        });
+    }
+
+    async function saveNote() {
+        const t = document.getElementById('n-text').value; if(!t) return;
+        document.getElementById('sync-bar').style.width = '50%';
+        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", text: t}) });
+        document.getElementById('n-text').value = ""; load();
+    }
+
+    async function markDone(row) { 
+        document.getElementById('sync-bar').style.width = '50%';
+        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "done", row: row}) }); 
+        load(); 
+    }
 
     function renderTimeline() {
         const grid = document.getElementById('timeline-grid'); if(!grid) return; grid.innerHTML = ''; 
@@ -177,9 +220,6 @@
     }
     function clearCanvas() { if(ctx) { ctx.clearRect(0, 0, canvas.width, canvas.height); isCanvasEmpty = true; } }
     async function saveData() { const d = { id: document.getElementById('f-id').value, wohnung: document.getElementById('f-wohnung').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, email: document.getElementById('email').value, telefon: document.getElementById('telefon').value, ausweis: document.getElementById('ausweis').value, signature: isCanvasEmpty ? "DELETE" : canvas.toDataURL() }; document.getElementById('sync-bar').style.width = '50%'; await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) }); load(); showView('visual'); }
-    function renderNotes() { const cont = document.getElementById('notiz-liste'); if(cont && notes) cont.innerHTML = notes.map(n => `<div style="background:#fff9f0; padding:10px; margin-top:10px; border-left:4px solid var(--orange); border-radius:8px; display:flex; justify-content:space-between; align-items:center;"><div><b>${n.zeit}</b><br>${n.text}</div><button onclick="markDone(${n.row})" style="background:#eee; border:none; padding:8px; border-radius:5px;">OK</button></div>`).join(''); }
-    async function markDone(row) { await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "done", row: row}) }); load(); }
-    async function saveNote() { const t = document.getElementById('n-text').value; if(!t) return; await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", text: t}) }); document.getElementById('n-text').value = ""; load(); }
     const curY = 2026; const yS = document.getElementById('year-select'); for(let y=curY-1; y<=curY+2; y++) { let o=document.createElement('option'); o.value=y; o.innerText=y; if(y===curY) o.selected=true; yS.appendChild(o); }
     function resizeCanvas() { const rect = canvas.getBoundingClientRect(); canvas.width = rect.width; canvas.height = rect.height; ctx.lineWidth = 3; ctx.lineCap = "round"; }
     let drawing = false; if(canvas) { canvas.addEventListener('touchstart', (e) => { drawing = true; isCanvasEmpty = false; ctx.beginPath(); const r = canvas.getBoundingClientRect(); ctx.moveTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); e.preventDefault(); }); canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const r = canvas.getBoundingClientRect(); ctx.lineTo(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top); ctx.stroke(); e.preventDefault(); }); window.addEventListener('touchend', () => drawing = false); }
