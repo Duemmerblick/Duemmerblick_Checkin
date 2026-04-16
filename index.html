@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v15.4</title>
+    <title>Dümmerblick Manager v15.6</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; --cell-w: 46px; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
@@ -69,7 +69,7 @@
     <div id="view-note" class="content-view hidden" style="padding:15px;">
         <div style="background:white; padding:15px; border-radius:14px; border:1px solid #ddd; margin-bottom:15px;">
             <label style="font-weight:bold; color:var(--primary);">NEUE LISTE / AUFGABE</label>
-            <textarea id="n-text" rows="4" placeholder="Mehrere Zeilen = Checkliste" style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee; margin-top:8px; box-sizing:border-box;"></textarea>
+            <textarea id="n-text" rows="4" placeholder="Zeile 1&#10;Zeile 2" style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee; margin-top:8px; box-sizing:border-box;"></textarea>
             <button onclick="saveNote()" class="btn-orange" style="width:100%; padding:15px; color:white; font-weight:bold; border-radius:10px; border:none; margin-top:10px;">HINZUFÜGEN</button>
         </div>
         <div id="notiz-liste"></div>
@@ -89,43 +89,35 @@
 </div>
 
 <script>
+    // DEIN AKTUELLE BEREITSTELLUNGS-LINK HIER EINTRAGEN (WICHTIG!)
     const API = "https://script.google.com/macros/s/AKfycbwmTGnzW0mS0HKMOZTQyTy68-VOlhNdJGjwU05pCg8tJ3ZVDA0cVZml1e-rDCrCF5R9/exec"; 
     let db = []; let notes = [];
     
-    // SAFE-LOGIN
     function checkLogin() {
         const p = document.getElementById('pass-input').value.toLowerCase().trim();
         if(p === 'duemmer123') {
-            try {
-                // Erst Cache laden für Sofort-Start
-                db = JSON.parse(localStorage.getItem('dm_cache_db')) || [];
-                notes = JSON.parse(localStorage.getItem('dm_cache_notes')) || [];
-                
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('app-content').classList.remove('hidden');
-                
-                renderAll(); 
-                load(); // Dann live Sync
-            } catch(e) {
-                // Fallback falls Cache korrupt
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('app-content').classList.remove('hidden');
-                load();
-            }
-        } else { alert('Falsches Passwort'); }
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('app-content').classList.remove('hidden');
+            
+            // Lade aus Cache für sofortige Anzeige
+            const cachedNotes = localStorage.getItem('dm_cache_notes');
+            if(cachedNotes) { notes = JSON.parse(cachedNotes); renderNotes(); }
+            
+            load(); 
+        } else { alert('Falsch'); }
     }
 
     async function load() {
         const bar = document.getElementById('sync-bar'); bar.style.width = '30%';
         try {
             const r = await fetch(API + "?nocache=" + Date.now());
-            const rawData = await r.json();
-            db = Array.isArray(rawData) ? rawData : (rawData.buchungen || []);
-            notes = rawData.notizen || [];
+            const data = await r.json();
+            db = data.buchungen || [];
+            notes = data.notizen || [];
+            renderAll();
             localStorage.setItem('dm_cache_db', JSON.stringify(db));
             localStorage.setItem('dm_cache_notes', JSON.stringify(notes));
             bar.style.width = '100%';
-            renderAll();
             setTimeout(() => bar.style.width = '0%', 800);
         } catch(e) { console.error(e); }
     }
@@ -133,41 +125,55 @@
     function renderAll() { renderTimeline(); renderTable(); renderYear(); renderNotes(); }
 
     function renderNotes() {
-        const cont = document.getElementById('notiz-liste'); if(!cont) return; cont.innerHTML = '';
+        const cont = document.getElementById('notiz-liste'); if(!cont) return;
+        cont.innerHTML = '';
         if(!notes || notes.length === 0) {
-            cont.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Keine Aufgaben vorhanden.</p>';
+            cont.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Keine Aufgaben.</p>';
             return;
         }
         notes.slice().reverse().forEach(n => {
-            const lines = n.text.split('\n').filter(l => l.trim() !== "");
+            const lines = n.text.split('\n');
             let h = `<div style="background:white; padding:12px; margin-bottom:15px; border-radius:12px; border:1px solid #eee; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
                         <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                             <small style="color:#999;">${n.zeit}</small>
                             <button onclick="markDone(${n.row})" style="background:#fff1f0; color:var(--danger); border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold;">LÖSCHEN</button>
                         </div>`;
             lines.forEach((line, idx) => {
-                h += `<div class="check-item"><input type="checkbox" id="c-${n.row}-${idx}"><label for="c-${n.row}-${idx}">${line}</label></div>`;
+                if(line.trim()) h += `<div class="check-item"><input type="checkbox" id="c-${n.row}-${idx}"><label for="c-${n.row}-${idx}">${line}</label></div>`;
             });
             h += `</div>`;
             cont.innerHTML += h;
         });
     }
 
+    // HIER IST DIE MAGIC: Die Notiz wird VOR dem Upload schon in die Ansicht geschoben (Optimistic UI)
     async function saveNote() {
         const t = document.getElementById('n-text').value; if(!t) return;
         document.getElementById('sync-bar').style.width = '50%';
-        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", text: t}) });
+        
+        // Füge sie temporär sofort der Ansicht hinzu (schnelleres Gefühl)
+        notes.push({ row: 9999, zeit: "Gerade eben", text: t });
+        renderNotes();
         document.getElementById('n-text').value = ""; 
-        setTimeout(load, 1200);
+
+        // Dann der echte Upload
+        await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", text: t}) });
+        setTimeout(load, 1500); // Lade die echten Daten mit echter Row-ID nach
     }
 
     async function markDone(row) { 
+        if(row === 9999) { alert("Bitte kurz warten, die Aufgabe wird noch gespeichert."); return; }
         if(!confirm("Aufgabe wirklich löschen?")) return;
         document.getElementById('sync-bar').style.width = '50%';
         await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "done", row: row}) }); 
-        setTimeout(load, 1200);
+        
+        // Entferne sie sofort aus der Ansicht
+        notes = notes.filter(n => n.row !== row);
+        renderNotes();
+        setTimeout(load, 1500);
     }
 
+    // Timeline, Year, Table identisch zu vorher...
     function renderTimeline() {
         const grid = document.getElementById('timeline-grid'); if(!grid) return; grid.innerHTML = ''; 
         const today = new Date(); today.setHours(0,0,0,0);
@@ -177,8 +183,7 @@
         ["Dümmerblick 1", "Dümmerblick 2"].forEach(apt => {
             let row = `<div class="grid-row">`; for(let i=0; i<=31; i++) row += `<div class="grid-cell"></div>`;
             db.filter(b => b.wohnung === apt).forEach(b => {
-                const s = new Date(b.anreise); s.setHours(0,0,0,0);
-                const e = new Date(b.abreise); e.setHours(0,0,0,0);
+                const s = new Date(b.anreise); const e = new Date(b.abreise);
                 const diff = Math.round((s.getTime() - today.getTime()) / 86400000);
                 const dur = Math.round((e.getTime() - s.getTime()) / 86400000);
                 if(diff + dur >= 0 && diff <= 31) { 
