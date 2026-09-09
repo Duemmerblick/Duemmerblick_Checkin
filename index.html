@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dümmerblick Manager v16.0</title>
+    <title>Dümmerblick Manager v16.1</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --secondary-light: #5dade2; --success: #27ae60; --orange: #e67e22; --danger: #e74c3c; --light: #f4f7f6; --empty: #f8f9fa; --cell-w: 46px; }
         body { font-family: sans-serif; background: var(--light); margin: 0; padding: 0; }
@@ -16,7 +16,7 @@
         #pass-input { width: 240px; padding: 15px; border-radius: 12px; border: none; margin-bottom: 15px; text-align: center; font-size: 18px; color: #333; }
         .btn-login { background: var(--success); color: white; width: 240px; padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; }
         .btn-login:active { transform: scale(0.95); }
-        .nav-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: #fff; }
+        .nav-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 12px 6px 12px; background: #fff; }
         .nav-top button { padding: 14px 5px; border: none; border-radius: 10px; font-weight: bold; color: white; font-size: 13px; cursor: pointer; transition: 0.2s; }
         .nav-top button:active { transform: scale(0.95); }
         .btn-blue { background: var(--secondary); } .btn-green { background: var(--success); } .btn-orange { background: var(--orange); } .btn-gray { background: #95a5a6; }
@@ -73,6 +73,10 @@
         <button class="btn-green" onclick="showView('list')">📋 LISTE</button>
         <button class="btn-gray" onclick="showView('note')">📝 AUFGABEN</button>
     </div>
+    <!-- NEU: Button für Manuelle Buchung -->
+    <div style="padding: 0 12px 12px 12px; background: #fff; border-bottom: 1px solid #eee;">
+        <button onclick="newBooking()" style="width:100%; background:var(--primary); color:white; padding:12px; border-radius:10px; border:none; font-weight:bold; cursor:pointer; font-size:14px; transition:0.2s;">➕ NEUE MANUELLE BUCHUNG</button>
+    </div>
 
     <div id="view-visual" class="content-view"><div class="timeline-wrapper"><div class="timeline-labels"><div class="label-cell" style="height:35px; background:#f1f1f1;">Einheit</div><div class="label-cell">Dümmerblick 1</div><div class="label-cell">Dümmerblick 2</div></div><div class="timeline-scroll"><div class="grid-container" id="timeline-grid"></div></div></div></div>
     <div id="view-year" class="content-view hidden"><div style="padding:10px;"><select id="year-select" onchange="renderYear()"></select><select id="apt-filter" onchange="renderYear()"><option>Dümmerblick 1</option><option>Dümmerblick 2</option></select></div><div id="year-container" style="padding:10px; display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;"></div></div>
@@ -87,21 +91,40 @@
         <div id="notiz-liste"></div>
     </div>
 
-    <div id="view-form" class="content-view hidden" style="padding:15px;"><div style="background:#fff; border-radius:16px; padding:20px; border:1px solid #ddd;"><input type="hidden" id="f-id"><input type="hidden" id="f-wohnung">
-        <div class="form-group"><label>Name</label><input type="text" id="gastName" style="width:100%; padding:10px; border:1px solid #eee;"></div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"><div><label>Anreise</label><input type="date" id="anreise" style="width:100%; padding:10px;"></div><div><label>Abreise</label><input type="date" id="abreise" style="width:100%; padding:10px;"></div></div>
-        <div style="margin-top:10px;"><label>Anschrift</label><input type="text" id="anschrift" style="width:100%; padding:10px; border:1px solid #eee;"></div>
-        <div style="margin-top:10px;"><label>E-Mail</label><input type="email" id="email" style="width:100%; padding:10px; border:1px solid #eee;"></div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"><div><label>Telefon</label><input type="tel" id="telefon" style="width:100%; padding:10px;"></div><div><label>Ausweis</label><input type="text" id="ausweis" style="width:100%; padding:10px;"></div></div>
-        <canvas id="signature-pad" style="border:1px solid #eee; width:100%; height:180px; border-radius:8px; background:#fafafa; touch-action:none; margin-top:15px;"></canvas>
-        <button onclick="clearCanvas()" style="width:100%; padding:10px; margin-top:5px; background:#eee; border:none; border-radius:8px;">Löschen</button>
-        <button id="btn-save-gast" onclick="saveData()" class="btn-green" style="width:100%; padding:20px; color:white; font-weight:bold; border-radius:10px; margin-top:20px; cursor:pointer;">💾 SPEICHERN</button>
-        <button onclick="showView('visual')" style="width:100%; margin-top:10px; background:none; border:none; color:#999; padding:10px;">Abbrechen</button>
-    </div></div>
+    <div id="view-form" class="content-view hidden" style="padding:15px;">
+        <div style="background:#fff; border-radius:16px; padding:20px; border:1px solid #ddd;">
+            <input type="hidden" id="f-id">
+            <!-- NEU: Wohnungs-Dropdown (Sichtbar für neue Buchungen) -->
+            <div style="margin-bottom:10px;">
+                <label style="font-weight:bold; color:var(--primary);">Wohnung</label>
+                <select id="f-wohnung" style="width:100%; padding:10px; border:1px solid #eee; background:white; font-size:16px; margin-top:5px;">
+                    <option value="Dümmerblick 1">Dümmerblick 1</option>
+                    <option value="Dümmerblick 2">Dümmerblick 2</option>
+                </select>
+            </div>
+            
+            <div class="form-group"><label>Gast Name</label><input type="text" id="gastName" style="width:100%; padding:10px; border:1px solid #eee;"></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"><div><label>Anreise</label><input type="date" id="anreise" style="width:100%; padding:10px;"></div><div><label>Abreise</label><input type="date" id="abreise" style="width:100%; padding:10px;"></div></div>
+            <div style="margin-top:10px;"><label>Anschrift</label><input type="text" id="anschrift" style="width:100%; padding:10px; border:1px solid #eee;"></div>
+            <div style="margin-top:10px;"><label>E-Mail</label><input type="email" id="email" style="width:100%; padding:10px; border:1px solid #eee;"></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"><div><label>Telefon</label><input type="tel" id="telefon" style="width:100%; padding:10px;"></div><div><label>Ausweis</label><input type="text" id="ausweis" style="width:100%; padding:10px;"></div></div>
+            <canvas id="signature-pad" style="border:1px solid #eee; width:100%; height:180px; border-radius:8px; background:#fafafa; touch-action:none; margin-top:15px;"></canvas>
+            <button onclick="clearCanvas()" style="width:100%; padding:10px; margin-top:5px; background:#eee; border:none; border-radius:8px;">Unterschrift Löschen</button>
+            
+            <button id="btn-save-gast" onclick="saveData()" class="btn-green" style="width:100%; padding:20px; color:white; font-weight:bold; border-radius:10px; margin-top:20px; cursor:pointer;">💾 SPEICHERN</button>
+            
+            <!-- NEU: Roter Storno/Lösch Button -->
+            <button id="btn-delete-gast" onclick="deleteBooking()" style="width:100%; padding:15px; color:white; font-weight:bold; border-radius:10px; border:none; margin-top:15px; background:var(--danger); cursor:pointer;">🗑️ BUCHUNG LÖSCHEN</button>
+            
+            <button onclick="showView('visual')" style="width:100%; margin-top:10px; background:none; border:none; color:#999; padding:10px;">Abbrechen / Zurück</button>
+        </div>
+    </div>
 </div>
 
 <script>
-    const API = "https://script.google.com/macros/s/AKfycbwmTGnzW0mS0HKMOZTQyTy68-VOlhNdJGjwU05pCg8tJ3ZVDA0cVZml1e-rDCrCF5R9/exec"; 
+    // NEUER LINK MIT DER NEUEN BEREITSTELLUNG!
+    const API = "https://script.google.com/macros/s/AKfycbzJZu-GYIgxvSuruTRg8HjYZBBW9XceiNpiFbRPyiKcIiTjsvcd6VZcK1S9-MmeS6rq/exec"; 
+    
     let db = []; let notes = []; let isCanvasEmpty = true;
     const sigCanvas = document.getElementById('signature-pad');
     const sigCtx = sigCanvas.getContext('2d');
@@ -153,15 +176,10 @@
                         </div>`;
             lines.forEach((line, idx) => {
                 if(line.trim() === "") return;
-                
-                // HAKEN-LOGIK: Prüfen, ob die Zeile mit "[x] " anfängt
                 let isChecked = line.startsWith("[x] ");
                 let cleanLine = isChecked ? line.substring(4) : line;
                 let checkedAttr = isChecked ? "checked" : "";
-                
-                // Durchgestrichener Text für noch besseres Feedback
                 let textStyle = isChecked ? "text-decoration: line-through; color: #999;" : "color: var(--primary);";
-                
                 h += `<div class="check-item">
                         <input type="checkbox" id="c-${n.row}-${idx}" ${checkedAttr} onchange="toggleCheck(${n.row}, ${idx}, this)">
                         <label for="c-${n.row}-${idx}" style="flex:1; cursor:pointer; font-size:15px; ${textStyle}">${cleanLine}</label>
@@ -172,42 +190,31 @@
         });
     }
 
-    // NEUE FUNKTION: Haken setzen & speichern
     async function toggleCheck(row, idx, checkboxEl) {
-        if(row === 9999) return; // Noch nicht vollständig geladen
-        
-        // Finde die Notiz im lokalen Array
+        if(row === 9999) return; 
         let note = notes.find(n => n.row === row);
         if(!note) return;
-        
         let lines = note.text.split('\n');
         let currentLine = lines[idx];
-        
-        // Text mit "[x] " markieren oder Markierung entfernen
         if(checkboxEl.checked) {
             if(!currentLine.startsWith("[x] ")) lines[idx] = "[x] " + currentLine;
         } else {
             if(currentLine.startsWith("[x] ")) lines[idx] = currentLine.substring(4);
         }
-        
         note.text = lines.join('\n');
-        renderNotes(); // Direkt optisch durchstreichen
-        
+        renderNotes(); 
         document.getElementById('sync-bar').style.width = '50%';
         await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "update_note", row: row, text: note.text}) });
-        load(); // Frische Daten ziehen
+        load();
     }
 
     async function saveNote() {
         const t = document.getElementById('n-text').value; if(!t) return;
         const btn = document.getElementById('btn-save-note');
-        
         btn.innerText = "⏳ SPEICHERE..."; btn.style.opacity = "0.7"; btn.disabled = true;
         document.getElementById('sync-bar').style.width = '50%';
-        
         notes.push({ row: 9999, zeit: "Gerade eben", text: t }); renderNotes();
         document.getElementById('n-text').value = ""; 
-        
         fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "note", text: t}) }).then(() => {
             btn.innerText = "HINZUFÜGEN"; btn.style.opacity = "1"; btn.disabled = false;
             load();
@@ -217,10 +224,8 @@
     async function markDone(row, btnElement) { 
         if(row === 9999) { alert("Wird noch gespeichert, bitte warten."); return; }
         if(!confirm("Aufgabe wirklich löschen?")) return;
-        
         btnElement.innerText = "⏳ LÖSCHE..."; btnElement.style.background = "#eee"; btnElement.style.color = "#999"; btnElement.disabled = true;
         document.getElementById('sync-bar').style.width = '50%';
-        
         fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "done", row: row}) }).then(() => {
             notes = notes.filter(n => n.row !== row); renderNotes();
             load();
@@ -253,10 +258,31 @@
     function getBookingColor(b, apt) { const all = db.filter(x => x.wohnung === apt).sort((k,l) => new Date(k.anreise) - new Date(l.anreise)); if (b.signature && b.signature.length > 500) return 'var(--success)'; return (all.findIndex(x => x.id === b.id) % 2 === 0) ? 'var(--secondary)' : 'var(--secondary-light)'; }
     function showView(v) { document.querySelectorAll('.content-view').forEach(el => el.classList.add('hidden')); const target = (v === 'list') ? 'view-kalender' : 'view-' + v; document.getElementById(target).classList.remove('hidden'); if(v === 'form') setTimeout(resizeCanvas, 200); }
     
+    // NEU: Logik für komplett neue Manuelle Buchung
+    function newBooking() {
+        document.getElementById('f-id').value = "MANUAL-" + Date.now();
+        document.getElementById('f-wohnung').value = "Dümmerblick 1";
+        document.getElementById('gastName').value = "";
+        document.getElementById('anreise').value = "";
+        document.getElementById('abreise').value = "";
+        document.getElementById('anschrift').value = "";
+        document.getElementById('email').value = "";
+        document.getElementById('telefon').value = "";
+        document.getElementById('ausweis').value = "";
+        
+        document.getElementById('btn-delete-gast').style.display = 'none'; // Bei neuer Buchung gibt's nichts zu löschen
+        
+        showView('form');
+        clearCanvas();
+    }
+
     function editEntry(id) {
         const b = db.find(x => x.id == id); if(!b) return;
         document.getElementById('f-id').value = b.id; document.getElementById('f-wohnung').value = b.wohnung; document.getElementById('gastName').value = b.name; document.getElementById('anreise').value = b.anreise; document.getElementById('abreise').value = b.abreise; 
         document.getElementById('anschrift').value = b.anschrift || ""; document.getElementById('email').value = b.email || ""; document.getElementById('telefon').value = b.telefon || ""; document.getElementById('ausweis').value = b.ausweis || "";
+        
+        document.getElementById('btn-delete-gast').style.display = 'block'; // Zeige Lösch-Button
+        
         showView('form'); 
         setTimeout(() => { 
             sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height); 
@@ -268,15 +294,49 @@
     
     function clearCanvas() { sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height); isCanvasEmpty = true; }
     
+    // NEU: Buchung Stornieren / Löschen Logik
+    async function deleteBooking() {
+        if(!confirm("Bist du sicher? Diese Buchung wird unwiderruflich gelöscht!")) return;
+        
+        const id = document.getElementById('f-id').value;
+        const btn = document.getElementById('btn-delete-gast');
+        
+        btn.innerText = "⏳ WIRD GELÖSCHT..."; btn.disabled = true; btn.style.opacity = "0.7";
+        document.getElementById('sync-bar').style.width = '50%';
+        
+        // Lokal ausblenden für schnelles Feedback
+        db = db.filter(b => b.id !== id);
+        renderAll(); 
+        showView('visual');
+        
+        // Backend benachrichtigen
+        fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({type: "delete_booking", id: id}) }).then(() => {
+            btn.innerText = "🗑️ BUCHUNG LÖSCHEN"; btn.disabled = false; btn.style.opacity = "1";
+            load();
+        });
+    }
+    
     async function saveData() { 
         const btn = document.getElementById('btn-save-gast');
+        
+        // Kleine Prüfung: Name, Anreise und Abreise dürfen nicht leer sein
+        if(!document.getElementById('gastName').value || !document.getElementById('anreise').value || !document.getElementById('abreise').value) {
+            alert("Bitte Name, Anreise und Abreise ausfüllen!");
+            return;
+        }
+
         btn.innerText = "⏳ WIRD GESPEICHERT..."; btn.style.opacity = "0.7"; btn.disabled = true;
         document.getElementById('sync-bar').style.width = '50%'; 
         
         const d = { id: document.getElementById('f-id').value, wohnung: document.getElementById('f-wohnung').value, name: document.getElementById('gastName').value, anreise: document.getElementById('anreise').value, abreise: document.getElementById('abreise').value, anschrift: document.getElementById('anschrift').value, email: document.getElementById('email').value, telefon: document.getElementById('telefon').value, ausweis: document.getElementById('ausweis').value, signature: isCanvasEmpty ? "DELETE" : sigCanvas.toDataURL() }; 
         
         let localB = db.find(x => x.id == d.id);
-        if(localB) { localB.name = d.name; localB.signature = d.signature; }
+        if(localB) { 
+            Object.assign(localB, d); // Aktualisiere alle Felder lokal
+        } else {
+            db.push(d); // Es ist eine komplett neue Buchung
+        }
+        
         renderAll(); showView('visual'); 
 
         fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) }).then(() => {
